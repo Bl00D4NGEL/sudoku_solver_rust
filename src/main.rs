@@ -11,7 +11,7 @@ fn main() {
         Field::new(5),
         Field::new(6),
         Field::new(7),
-        Field::empty(),
+        Field::empty(Option::None),
         Field::new(8),
         Field::new(9),
     ];

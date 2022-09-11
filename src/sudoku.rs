@@ -1,18 +1,21 @@
 #[derive(Debug, Clone)]
 pub struct Field {
     value: Option<i32>,
+    possibilities: Vec<i32>,
 }
 
 impl Field {
     pub fn new(val: i32) -> Field {
         Field {
             value: Option::Some(val),
+            possibilities: vec![],
         }
     }
 
-    pub fn empty() -> Field {
+    pub fn empty(possibilities: Option<Vec<i32>>) -> Field {
         Field {
             value: Option::None,
+            possibilities: possibilities.unwrap_or(vec![1, 2, 3, 4, 5, 6, 7, 8, 9]),
         }
     }
 
@@ -22,6 +25,10 @@ impl Field {
 
     pub fn is_empty(&self) -> bool {
         self.value.is_none()
+    }
+
+    pub fn possibilities(&self) -> &Vec<i32> {
+        return &self.possibilities;
     }
 }
 
@@ -35,26 +42,50 @@ impl Row {
         Row { fields }
     }
 
-    pub fn get_possibilities(&self) -> Vec<i32> {
-        let filled_fields: Vec<i32> = self
+    pub fn fields(&self) -> &[Field; 9] {
+        &self.fields
+    }
+
+    pub fn empty_fields(&self) -> Vec<&Field> {
+        self.fields.iter().filter(|f| f.is_empty()).collect()
+    }
+
+    pub fn update_possibilities(&mut self) {
+        let used_digits: Vec<i32> = self
             .fields
             .iter()
             .map(|f| f.value.unwrap_or(0))
-            .filter(|i| i.gt(&0))
+            .filter(|v| v.ge(&0))
             .collect();
 
-        let mut possibilities = vec![];
+        let mut possible_digits = vec![];
 
-        for i in 1..9 {
-            if !filled_fields.contains(&i) {
-                possibilities.push(i)
+        for digit in 1..=9 {
+            if !used_digits.contains(&digit) {
+                possible_digits.push(digit);
             }
         }
 
-        possibilities
+        self.fields = self.fields().clone().map(|f| {
+            if !f.is_empty() {
+                return f;
+            }
+
+            return Field::empty(Option::Some(possible_digits.clone()));
+        });
+    }
+}
+
+pub struct Grid {
+    fields: [Field; 81],
+}
+
+impl Grid {
+    pub fn new(fields: [Field; 81]) -> Grid {
+        Grid { fields }
     }
 
-    pub fn fields(&self) -> &[Field; 9] {
+    pub fn fields(&self) -> &[Field; 81] {
         &self.fields
     }
 }
