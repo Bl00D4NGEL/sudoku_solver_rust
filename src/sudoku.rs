@@ -34,15 +34,18 @@ impl Field {
 
 #[derive(Debug, Clone)]
 pub struct Row {
-    fields: [Field; 9],
+    fields: Vec<Field>,
 }
 
 impl Row {
-    pub fn new(fields: [Field; 9]) -> Row {
+    pub fn new(fields: Vec<Field>) -> Row {
+        if fields.len() != 9 {
+            panic!("Row must have exactly 9 fields");
+        }
         Row { fields }
     }
 
-    pub fn fields(&self) -> &[Field; 9] {
+    pub fn fields(&self) -> &Vec<Field> {
         &self.fields
     }
 
@@ -66,27 +69,35 @@ impl Row {
             }
         }
 
-        self.fields = self.fields().clone().map(|f| {
-            if !f.is_empty() {
-                return f;
-            }
+        self.fields = self
+            .fields
+            .clone()
+            .into_iter()
+            .map(|f| {
+                if !f.is_empty() {
+                    return f;
+                }
 
-            return Field::empty(Option::Some(possible_digits.clone()));
-        });
+                return Field::empty(Option::Some(possible_digits.clone()));
+            })
+            .collect();
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Grid {
-    rows: [Row; 9],
+    rows: Vec<Row>,
 }
 
 impl Grid {
-    pub fn new(rows: [Row; 9]) -> Grid {
+    pub fn new(rows: Vec<Row>) -> Grid {
+        if rows.len() != 9 {
+            panic!("Grid must have exactly 9 rows");
+        }
         Grid { rows }
     }
 
-    pub fn rows(&self) -> &[Row; 9] {
+    pub fn rows(&self) -> &Vec<Row> {
         &self.rows
     }
 
