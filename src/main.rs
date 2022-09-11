@@ -8,7 +8,7 @@ fn main() {
     grid.print();
 
     println!();
-    let new_grid = Grid::new(grid.rows().clone().map(|r| run(&r)));
+    let new_grid = Grid::new(grid.rows().clone().map(|r| run(r)));
     new_grid.print();
 }
 

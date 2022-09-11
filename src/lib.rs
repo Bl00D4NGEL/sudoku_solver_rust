@@ -2,9 +2,9 @@ use sudoku::{Field, Row};
 
 pub mod sudoku;
 
-pub fn run(row: &Row) -> Row {
+pub fn run(row: Row) -> Row {
     if row.empty_fields().len() != 1 {
-        return row.clone();
+        return row;
     }
 
     let mut mutable_row = row.clone();
