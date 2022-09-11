@@ -76,16 +76,35 @@ impl Row {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Grid {
-    fields: [Field; 81],
+    rows: [Row; 9],
 }
 
 impl Grid {
-    pub fn new(fields: [Field; 81]) -> Grid {
-        Grid { fields }
+    pub fn new(rows: [Row; 9]) -> Grid {
+        Grid { rows }
     }
 
-    pub fn fields(&self) -> &[Field; 81] {
-        &self.fields
+    pub fn rows(&self) -> &[Row; 9] {
+        &self.rows
+    }
+
+    pub fn print(&self) {
+        for (i, row) in self.rows().iter().enumerate() {
+            println!(
+                "{}: {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
+                i,
+                row.fields()[0].value.unwrap_or(0),
+                row.fields()[1].value.unwrap_or(0),
+                row.fields()[2].value.unwrap_or(0),
+                row.fields()[3].value.unwrap_or(0),
+                row.fields()[4].value.unwrap_or(0),
+                row.fields()[5].value.unwrap_or(0),
+                row.fields()[6].value.unwrap_or(0),
+                row.fields()[7].value.unwrap_or(0),
+                row.fields()[8].value.unwrap_or(0)
+            )
+        }
     }
 }
