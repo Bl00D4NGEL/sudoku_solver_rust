@@ -124,9 +124,9 @@ impl Grid {
     }
 
     pub fn columns(&self) -> Vec<Row> {
-        let mut rows: Vec<Row> = vec![];
+        let mut rows = vec![];
         for i in 0..=8 {
-            let fields: Vec<Field> = self
+            let fields = self
                 .rows()
                 .iter()
                 .map(|r| r.fields().get(i).expect("Field must exist.").clone())
@@ -157,5 +157,15 @@ impl Grid {
 
     pub fn is_valid() -> bool {
         true
+    }
+
+    pub fn is_solved(&self) -> bool {
+        for row in self.rows() {
+            if row.empty_fields().len() != 0 {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -1,38 +1,32 @@
 use crate::sudoku::{Field, Grid, Row};
 
 pub trait Solvable {
-    fn solve(grid: &Grid) -> Grid;
+    fn solve<'a>(&self, grid: &'a Grid) -> Grid;
 }
 
 pub struct ByRows {}
 
 impl Solvable for ByRows {
-    fn solve(grid: &Grid) -> Grid {
-        Grid::new(
-            grid.rows()
-                .clone()
-                .into_iter()
-                .map(|r| solve_by_row(r))
-                .collect(),
-        )
+    fn solve<'a>(&self, grid: &'a Grid) -> Grid {
+        Grid::new(grid.rows().into_iter().map(|r| solve_by_row(r)).collect())
     }
 }
 pub struct ByColumns {}
 
 impl Solvable for ByColumns {
-    fn solve(grid: &Grid) -> Grid {
+    fn solve<'a>(&self, grid: &'a Grid) -> Grid {
         Grid::new(
             grid.columns()
                 .into_iter()
-                .map(|r| solve_by_row(r))
+                .map(|r| solve_by_row(&r))
                 .collect(),
         )
     }
 }
 
-fn solve_by_row(row: Row) -> Row {
+fn solve_by_row(row: &Row) -> Row {
     if row.empty_fields().len() != 1 {
-        return row;
+        return row.clone();
     }
 
     let mut mutable_row = row.clone();
