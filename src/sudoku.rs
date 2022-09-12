@@ -1,3 +1,5 @@
+use std::vec;
+
 #[derive(Debug, Clone)]
 pub struct Field {
     value: Option<i32>,
@@ -119,6 +121,20 @@ impl Grid {
 
     pub fn rows(&self) -> &Vec<Row> {
         &self.rows
+    }
+
+    pub fn columns(&self) -> Vec<Row> {
+        let mut rows: Vec<Row> = vec![];
+        for i in 0..=8 {
+            let fields: Vec<Field> = self
+                .rows()
+                .iter()
+                .map(|r| r.fields().get(i).expect("Field must exist.").clone())
+                .collect();
+            rows.push(Row::new(fields));
+        }
+
+        rows
     }
 
     pub fn print(&self) {

@@ -1,7 +1,7 @@
 use std::{fs, io::Error};
 
 use sudoku_solver::{
-    solver::{ByRows, Solvable},
+    solver::{ByColumns, ByRows, Solvable},
     sudoku::{Field, Grid, Row},
 };
 
@@ -17,10 +17,14 @@ fn main() {
 
     let new_grid = ByRows::solve(&grid);
     new_grid.print();
+    println!();
+
+    let new_grid = ByColumns::solve(&grid);
+    new_grid.print();
 }
 
 fn create_grid() -> Result<Grid, Error> {
-    let file_content = fs::read_to_string("./grid.txt")?;
+    let file_content = fs::read_to_string("./grid3.txt")?;
     let mut rows: Vec<Row> = vec![];
     for line in file_content.lines().into_iter() {
         let mut fields = vec![];

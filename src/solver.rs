@@ -17,6 +17,18 @@ impl Solvable for ByRows {
         )
     }
 }
+pub struct ByColumns {}
+
+impl Solvable for ByColumns {
+    fn solve(grid: &Grid) -> Grid {
+        Grid::new(
+            grid.columns()
+                .into_iter()
+                .map(|r| solve_by_row(r))
+                .collect(),
+        )
+    }
+}
 
 fn solve_by_row(row: Row) -> Row {
     if row.empty_fields().len() != 1 {
