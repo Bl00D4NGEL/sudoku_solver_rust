@@ -19,6 +19,7 @@ fn main() {
 fn solve(grid: &mut Grid) -> &mut Grid {
     grid.update_possibilities_in_rows();
     grid.update_possibilities_in_columns();
+    grid.update_possibilities_in_box();
 
     solve_with(grid, ByPossibilities {});
     solve_with(grid, ByColumns {});
