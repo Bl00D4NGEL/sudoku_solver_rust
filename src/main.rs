@@ -1,7 +1,7 @@
 use std::{fs, io::Error};
 
 use sudoku_solver::{
-    run,
+    solver::{ByRows, Solvable},
     sudoku::{Field, Grid, Row},
 };
 
@@ -15,7 +15,7 @@ fn main() {
 
     println!();
 
-    let new_grid = Grid::new(grid.rows().clone().into_iter().map(|r| run(r)).collect());
+    let new_grid = ByRows::solve(&grid);
     new_grid.print();
 }
 

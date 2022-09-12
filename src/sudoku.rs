@@ -9,6 +9,7 @@ impl Field {
         if val < 1 || val > 9 {
             panic!("Value for field must be between 1 and 9, got {}", val)
         }
+
         Field {
             value: Option::Some(val),
             possibilities: vec![],
