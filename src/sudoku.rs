@@ -6,17 +6,33 @@ pub struct Field {
 
 impl Field {
     pub fn new(val: i32) -> Field {
+        if val < 1 || val > 9 {
+            panic!("Value for field must be between 1 and 9, got {}", val)
+        }
         Field {
             value: Option::Some(val),
             possibilities: vec![],
         }
     }
 
-    pub fn empty(possibilities: Option<Vec<i32>>) -> Field {
+    pub fn empty() -> Field {
         Field {
             value: Option::None,
-            possibilities: possibilities.unwrap_or(vec![1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            possibilities: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
         }
+    }
+
+    pub fn with_possibilities(&self, possibilities: Vec<i32>) -> Result<Field, String> {
+        if self.value.is_some() {
+            return Err(String::from(
+                "Field already has value. Setting possitibilities is forbidden",
+            ));
+        }
+
+        Ok(Field {
+            value: Option::None,
+            possibilities,
+        })
     }
 
     pub fn update(&mut self, new_val: i32) {
@@ -78,7 +94,10 @@ impl Row {
                     return f;
                 }
 
-                return Field::empty(Option::Some(possible_digits.clone()));
+                let f = Field::empty();
+                return f
+                    .with_possibilities(possible_digits.clone())
+                    .expect("Field is empty so the call to with_possibilities should not fail");
             })
             .collect();
     }
@@ -117,5 +136,9 @@ impl Grid {
                 row.fields()[8].value.unwrap_or(0)
             )
         }
+    }
+
+    pub fn is_valid() -> bool {
+        true
     }
 }

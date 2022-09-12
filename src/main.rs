@@ -1,118 +1,38 @@
+use std::{fs, io::Error};
+
 use sudoku_solver::{
     run,
     sudoku::{Field, Grid, Row},
 };
 
 fn main() {
-    let grid = create_grid();
+    let grid = match create_grid() {
+        Ok(grid) => grid,
+        Err(err) => panic!("Cannot create grid: {}.", err),
+    };
+
     grid.print();
+
+    println!();
 
     let new_grid = Grid::new(grid.rows().clone().into_iter().map(|r| run(r)).collect());
     new_grid.print();
 }
 
-fn create_grid() -> Grid {
-    let fields = Row::new(vec![
-        Field::empty(Option::None),
-        Field::new(2),
-        Field::new(3),
-        Field::new(4),
-        Field::new(5),
-        Field::new(6),
-        Field::new(7),
-        Field::new(8),
-        Field::new(9),
-    ]);
-    let fields2 = Row::new(vec![
-        Field::new(9),
-        Field::new(1),
-        Field::empty(Option::None),
-        Field::new(3),
-        Field::new(4),
-        Field::new(5),
-        Field::new(6),
-        Field::new(7),
-        Field::new(8),
-    ]);
-    let fields3 = Row::new(vec![
-        Field::new(8),
-        Field::new(9),
-        Field::new(1),
-        Field::new(2),
-        Field::empty(Option::None),
-        Field::new(4),
-        Field::new(5),
-        Field::new(6),
-        Field::new(7),
-    ]);
-    let fields4 = Row::new(vec![
-        Field::new(7),
-        Field::new(8),
-        Field::new(9),
-        Field::new(1),
-        Field::new(2),
-        Field::new(3),
-        Field::empty(Option::None),
-        Field::new(5),
-        Field::new(6),
-    ]);
-    let fields5 = Row::new(vec![
-        Field::new(6),
-        Field::new(7),
-        Field::new(8),
-        Field::new(9),
-        Field::new(1),
-        Field::new(2),
-        Field::new(3),
-        Field::new(4),
-        Field::empty(Option::None),
-    ]);
-    let fields6 = Row::new(vec![
-        Field::new(5),
-        Field::empty(Option::None),
-        Field::new(7),
-        Field::new(8),
-        Field::new(9),
-        Field::new(1),
-        Field::new(2),
-        Field::new(3),
-        Field::new(4),
-    ]);
-    let fields7 = Row::new(vec![
-        Field::new(4),
-        Field::new(5),
-        Field::new(6),
-        Field::empty(Option::None),
-        Field::new(8),
-        Field::new(9),
-        Field::new(1),
-        Field::new(2),
-        Field::new(3),
-    ]);
-    let fields8 = Row::new(vec![
-        Field::new(3),
-        Field::new(4),
-        Field::new(5),
-        Field::new(6),
-        Field::new(7),
-        Field::empty(Option::None),
-        Field::new(9),
-        Field::new(1),
-        Field::new(2),
-    ]);
-    let fields9 = Row::new(vec![
-        Field::new(2),
-        Field::new(3),
-        Field::new(4),
-        Field::new(5),
-        Field::new(6),
-        Field::new(7),
-        Field::new(8),
-        Field::empty(Option::None),
-        Field::new(1),
-    ]);
+fn create_grid() -> Result<Grid, Error> {
+    let file_content = fs::read_to_string("./grid.txt")?;
+    let mut rows: Vec<Row> = vec![];
+    for line in file_content.lines().into_iter() {
+        let mut fields = vec![];
+        for s in line.split_whitespace().into_iter() {
+            fields.push(match s.parse() {
+                Ok(v) => Field::new(v),
+                Err(_) => Field::empty(),
+            });
+        }
 
-    Grid::new(vec![
-        fields, fields2, fields3, fields4, fields5, fields6, fields7, fields8, fields9,
-    ])
+        rows.push(Row::new(fields));
+    }
+
+    Ok(Grid::new(rows))
 }
