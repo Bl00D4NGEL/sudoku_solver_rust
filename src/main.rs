@@ -1,7 +1,7 @@
 use std::{fs, io::Error};
 
 use sudoku_solver::{
-    solver::{ByColumns, ByRows, Solvable},
+    solvable::{ByColumns, ByRows, Solvable},
     sudoku::{Field, Grid, Printable},
 };
 
@@ -31,7 +31,7 @@ fn solve_with<'a>(grid: &'a mut Grid, solver_solvable: impl Solvable) -> &mut Gr
 }
 
 fn create_grid() -> Result<Grid, Error> {
-    let file_content = fs::read_to_string("./grid4.txt")?;
+    let file_content = fs::read_to_string("./grid5.txt")?;
 
     let mut grid = Grid::create_empty();
     for (row, line) in file_content.lines().into_iter().enumerate() {

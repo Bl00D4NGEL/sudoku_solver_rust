@@ -38,10 +38,6 @@ impl Field {
         })
     }
 
-    pub fn update(&mut self, new_val: i32) {
-        self.value = Option::Some(new_val);
-    }
-
     pub fn is_empty(&self) -> bool {
         self.value.is_none()
     }
@@ -69,6 +65,10 @@ impl Grid {
         }
 
         Grid { fields }
+    }
+
+    pub fn fields(&self) -> &Vec<Field> {
+        &self.fields
     }
 
     pub fn get_field(&self, row: usize, column: usize) -> Option<&Field> {
