@@ -1,4 +1,4 @@
-use crate::sudoku::Grid;
+use crate::sudoku::{Field, Grid};
 
 pub trait Printable {
     fn print(&self);
@@ -21,5 +21,23 @@ impl Printable for Grid {
                 row[8].value().unwrap_or(0)
             )
         }
+    }
+}
+
+impl Printable for Vec<Field> {
+    fn print(&self) {
+        for field in self.iter() {
+            print!("{:?}", field.value().unwrap_or(0))
+        }
+        println!()
+    }
+}
+
+impl Printable for Vec<&Field> {
+    fn print(&self) {
+        for field in self.iter() {
+            print!("{:?} ", field.value().unwrap_or(0),)
+        }
+        println!()
     }
 }

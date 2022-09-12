@@ -1,8 +1,9 @@
 use std::{fs, io::Error};
 
 use sudoku_solver::{
-    solvable::{ByColumns, ByRows, Solvable},
-    sudoku::{Field, Grid, Printable},
+    printable::Printable,
+    solvable::{ByPossibilities, Solvable},
+    sudoku::{Field, Grid},
 };
 
 fn main() {
@@ -16,8 +17,10 @@ fn main() {
 }
 
 fn solve(grid: &mut Grid) -> &mut Grid {
-    solve_with(grid, ByRows {});
-    solve_with(grid, ByColumns {});
+    grid.update_possibilities_in_rows();
+    grid.update_possibilities_in_columns();
+
+    solve_with(grid, ByPossibilities {});
 
     if grid.is_solved() {
         return grid;
