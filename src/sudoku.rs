@@ -49,123 +49,100 @@ impl Field {
     pub fn possibilities(&self) -> &Vec<i32> {
         return &self.possibilities;
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct Row {
-    fields: Vec<Field>,
-}
-
-impl Row {
-    pub fn new(fields: Vec<Field>) -> Row {
-        if fields.len() != 9 {
-            panic!("Row must have exactly 9 fields");
-        }
-        Row { fields }
-    }
-
-    pub fn fields(&self) -> &Vec<Field> {
-        &self.fields
-    }
-
-    pub fn empty_fields(&self) -> Vec<&Field> {
-        self.fields.iter().filter(|f| f.is_empty()).collect()
-    }
-
-    pub fn update_possibilities(&mut self) {
-        let used_digits: Vec<i32> = self
-            .fields
-            .iter()
-            .map(|f| f.value.unwrap_or(0))
-            .filter(|v| v.ge(&0))
-            .collect();
-
-        let mut possible_digits = vec![];
-
-        for digit in 1..=9 {
-            if !used_digits.contains(&digit) {
-                possible_digits.push(digit);
-            }
-        }
-
-        self.fields = self
-            .fields
-            .clone()
-            .into_iter()
-            .map(|f| {
-                if !f.is_empty() {
-                    return f;
-                }
-
-                let f = Field::empty();
-                return f
-                    .with_possibilities(possible_digits.clone())
-                    .expect("Field is empty so the call to with_possibilities should not fail");
-            })
-            .collect();
+    pub fn value(&self) -> Option<i32> {
+        return self.value;
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Grid {
-    rows: Vec<Row>,
+    fields: Vec<Field>,
 }
 
 impl Grid {
-    pub fn new(rows: Vec<Row>) -> Grid {
-        if rows.len() != 9 {
-            panic!("Grid must have exactly 9 rows");
-        }
-        Grid { rows }
-    }
+    pub fn create_empty() -> Grid {
+        let mut fields: Vec<Field> = vec![];
 
-    pub fn rows(&self) -> &Vec<Row> {
-        &self.rows
-    }
-
-    pub fn columns(&self) -> Vec<Row> {
-        let mut rows = vec![];
-        for i in 0..=8 {
-            let fields = self
-                .rows()
-                .iter()
-                .map(|r| r.fields().get(i).expect("Field must exist.").clone())
-                .collect();
-            rows.push(Row::new(fields));
+        for _ in 0..81 {
+            fields.push(Field::empty());
         }
 
-        rows
+        Grid { fields }
     }
 
-    pub fn print(&self) {
-        for (i, row) in self.rows().iter().enumerate() {
-            println!(
-                "{}: {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
-                i,
-                row.fields()[0].value.unwrap_or(0),
-                row.fields()[1].value.unwrap_or(0),
-                row.fields()[2].value.unwrap_or(0),
-                row.fields()[3].value.unwrap_or(0),
-                row.fields()[4].value.unwrap_or(0),
-                row.fields()[5].value.unwrap_or(0),
-                row.fields()[6].value.unwrap_or(0),
-                row.fields()[7].value.unwrap_or(0),
-                row.fields()[8].value.unwrap_or(0)
-            )
-        }
+    pub fn get_field(&self, row: usize, column: usize) -> Option<&Field> {
+        return self
+            .fields
+            .get(Grid::grid_index_by_row_and_column(row, column));
     }
 
-    pub fn is_valid() -> bool {
-        true
+    pub fn set_field(&mut self, row: usize, column: usize, field: Field) {
+        let index = Grid::grid_index_by_row_and_column(row, column);
+        self.fields.splice(index..index + 1, vec![field]);
+    }
+
+    fn grid_index_by_row_and_column(row: usize, column: usize) -> usize {
+        return row * 9 + column;
     }
 
     pub fn is_solved(&self) -> bool {
-        for row in self.rows() {
-            if row.empty_fields().len() != 0 {
+        for field in &self.fields {
+            if field.is_empty() {
                 return false;
             }
         }
 
         return true;
+    }
+
+    pub fn get_fields_in_row(&self, row: usize) -> Result<Vec<&Field>, String> {
+        let mut fields = vec![];
+
+        for i in 0..9 {
+            fields.push(match self.get_field(row, i) {
+                Some(field) => field,
+                None => return Err(String::from("Cannot find field")),
+            });
+        }
+
+        Ok(fields)
+    }
+
+    pub fn get_fields_in_column(&self, column: usize) -> Result<Vec<&Field>, String> {
+        let mut fields = vec![];
+        for i in 0..9 {
+            fields.push(match self.get_field(i, column) {
+                Some(field) => field,
+                None => return Err(String::from("Cannot find field")),
+            });
+        }
+
+        Ok(fields)
+    }
+}
+
+pub trait Printable {
+    fn print(&self);
+}
+
+impl Printable for Grid {
+    fn print(&self) {
+        let rows = self.fields.chunks(9);
+        for (i, row) in rows.enumerate() {
+            println!(
+                "{}: {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
+                i,
+                row[0].value.unwrap_or(0),
+                row[1].value.unwrap_or(0),
+                row[2].value.unwrap_or(0),
+                row[3].value.unwrap_or(0),
+                row[4].value.unwrap_or(0),
+                row[5].value.unwrap_or(0),
+                row[6].value.unwrap_or(0),
+                row[7].value.unwrap_or(0),
+                row[8].value.unwrap_or(0)
+            )
+        }
     }
 }

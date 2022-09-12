@@ -1,54 +1,78 @@
-use crate::sudoku::{Field, Grid, Row};
+use crate::sudoku::{Field, Grid};
 
 pub trait Solvable {
-    fn solve<'a>(&self, grid: &'a Grid) -> Grid;
+    fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid;
 }
 
 pub struct ByRows {}
 
 impl Solvable for ByRows {
-    fn solve<'a>(&self, grid: &'a Grid) -> Grid {
-        Grid::new(grid.rows().into_iter().map(|r| solve_by_row(r)).collect())
+    fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
+        for row in 0..=8 {
+            let cloned_grid = grid.clone();
+            let fields = match cloned_grid.get_fields_in_row(row) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+
+            let missing_digit = match determine_missing_digit_in_fields(&fields) {
+                Some(d) => d,
+                None => continue,
+            };
+
+            for (column, field) in fields.iter().enumerate() {
+                if field.is_empty() {
+                    grid.set_field(row, column, Field::new(missing_digit));
+                }
+            }
+        }
+
+        grid
     }
+}
+
+fn determine_missing_digit_in_fields(fields: &Vec<&Field>) -> Option<i32> {
+    let used_digits: Vec<i32> = fields
+        .iter()
+        .map(|f| f.value().unwrap_or(0))
+        .filter(|f| f.gt(&0))
+        .collect();
+
+    if used_digits.len() != 8 {
+        return Option::None;
+    }
+
+    for digit in 1..=9 {
+        if !used_digits.contains(&digit) {
+            return Option::Some(digit);
+        }
+    }
+
+    return Option::None;
 }
 pub struct ByColumns {}
 
 impl Solvable for ByColumns {
-    fn solve<'a>(&self, grid: &'a Grid) -> Grid {
-        Grid::new(
-            grid.columns()
-                .into_iter()
-                .map(|r| solve_by_row(&r))
-                .collect(),
-        )
-    }
-}
+    fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
+        for column in 0..=8 {
+            let cloned_grid = grid.clone();
+            let fields = match cloned_grid.get_fields_in_column(column) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
 
-fn solve_by_row(row: &Row) -> Row {
-    if row.empty_fields().len() != 1 {
-        return row.clone();
-    }
+            let missing_digit = match determine_missing_digit_in_fields(&fields) {
+                Some(d) => d,
+                None => continue,
+            };
 
-    let mut mutable_row = row.clone();
-
-    mutable_row.update_possibilities();
-
-    let new_fields = mutable_row
-        .fields()
-        .clone()
-        .into_iter()
-        .map(|f| {
-            if !f.is_empty() {
-                return f;
+            for (row, field) in fields.iter().enumerate() {
+                if field.is_empty() {
+                    grid.set_field(row, column, Field::new(missing_digit));
+                }
             }
+        }
 
-            if f.possibilities().len() == 1 {
-                return Field::new(f.possibilities()[0]);
-            }
-
-            return f;
-        })
-        .collect();
-
-    return Row::new(new_fields);
+        grid
+    }
 }

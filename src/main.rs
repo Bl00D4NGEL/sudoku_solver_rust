@@ -2,48 +2,50 @@ use std::{fs, io::Error};
 
 use sudoku_solver::{
     solver::{ByColumns, ByRows, Solvable},
-    sudoku::{Field, Grid, Row},
+    sudoku::{Field, Grid, Printable},
 };
 
 fn main() {
-    let grid = match create_grid() {
+    let mut grid = match create_grid() {
         Ok(grid) => grid,
         Err(err) => panic!("Cannot create grid: {}.", err),
     };
+    let solved_grid = solve(&mut grid);
 
-    let solved_grid = solve(&grid);
     solved_grid.print();
 }
 
-fn solve(grid: &Grid) -> Grid {
-    let new_grid = solve_with(&grid, ByRows {});
-    let new_grid = solve_with(&new_grid, ByColumns {});
+fn solve(grid: &mut Grid) -> &mut Grid {
+    solve_with(grid, ByRows {});
+    solve_with(grid, ByColumns {});
 
-    if new_grid.is_solved() {
-        return new_grid;
+    if grid.is_solved() {
+        return grid;
     }
 
-    return solve(&new_grid);
+    return solve(grid);
 }
 
-fn solve_with<'a>(grid: &'a Grid, solver_solvable: impl Solvable) -> Grid {
+fn solve_with<'a>(grid: &'a mut Grid, solver_solvable: impl Solvable) -> &mut Grid {
     solver_solvable.solve(grid)
 }
 
 fn create_grid() -> Result<Grid, Error> {
     let file_content = fs::read_to_string("./grid4.txt")?;
-    let mut rows: Vec<Row> = vec![];
-    for line in file_content.lines().into_iter() {
-        let mut fields = vec![];
-        for s in line.split_whitespace().into_iter() {
-            fields.push(match s.parse() {
-                Ok(v) => Field::new(v),
-                Err(_) => Field::empty(),
-            });
-        }
 
-        rows.push(Row::new(fields));
+    let mut grid = Grid::create_empty();
+    for (row, line) in file_content.lines().into_iter().enumerate() {
+        for (col, s) in line.split_whitespace().into_iter().enumerate() {
+            grid.set_field(
+                row,
+                col,
+                match s.parse() {
+                    Ok(v) => Field::new(v),
+                    Err(_) => Field::empty(),
+                },
+            );
+        }
     }
 
-    Ok(Grid::new(rows))
+    return Ok(grid);
 }
