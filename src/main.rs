@@ -2,7 +2,10 @@ use std::{fs, io::Error, time::Duration};
 
 use sudoku_solver::{
     printable::Printable,
-    solvable::{ByColumns, ByPossibilities, ByRows, Solvable},
+    solvable::{
+        ByColumns, ByPossibilities, ByRows, BySinglePossibilitiesColumns,
+        BySinglePossibilitiesRows, Solvable,
+    },
     sudoku::{Field, Grid},
 };
 
@@ -11,19 +14,18 @@ fn main() {
         Ok(grid) => grid,
         Err(err) => panic!("Cannot create grid: {}.", err),
     };
+
     let solved_grid = solve(&mut grid);
 
     solved_grid.print();
 }
 
 fn solve(grid: &mut Grid) -> &mut Grid {
-    grid.update_possibilities_in_rows();
-    grid.update_possibilities_in_columns();
-    grid.update_possibilities_in_box();
-
     solve_with(grid, ByPossibilities {});
     solve_with(grid, ByColumns {});
     solve_with(grid, ByRows {});
+    solve_with(grid, BySinglePossibilitiesRows {});
+    solve_with(grid, BySinglePossibilitiesColumns {});
 
     if grid.is_solved() {
         return grid;
@@ -31,13 +33,19 @@ fn solve(grid: &mut Grid) -> &mut Grid {
 
     println!("Grid not solved");
     grid.print();
+    println!();
     std::thread::sleep(Duration::new(1, 0));
 
     return solve(grid);
 }
 
 fn solve_with<'a>(grid: &'a mut Grid, solver_solvable: impl Solvable) -> &mut Grid {
-    solver_solvable.solve(grid)
+    grid.update_possibilities_in_rows();
+    grid.update_possibilities_in_columns();
+    grid.update_possibilities_in_boxes();
+    solver_solvable.solve(grid);
+
+    grid
 }
 
 fn create_grid() -> Result<Grid, Error> {

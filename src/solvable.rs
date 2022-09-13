@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::sudoku::{Field, Grid};
 
 pub trait Solvable {
@@ -89,4 +91,83 @@ impl Solvable for ByPossibilities {
 
         grid
     }
+}
+
+pub struct BySinglePossibilitiesRows {}
+
+impl Solvable for BySinglePossibilitiesRows {
+    fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
+        let mut fields_to_update = vec![];
+        for row in 0..=8 {
+            let fields = match grid.get_fields_in_row(row) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+
+            let possibilities = determine_single_possibility_in_field_set(&fields);
+
+            for (col, field) in possibilities {
+                fields_to_update.push((row, col, field));
+            }
+        }
+
+        for (row, col, field) in fields_to_update {
+            grid.set_field(row, col, field);
+        }
+
+        grid
+    }
+}
+
+pub struct BySinglePossibilitiesColumns {}
+
+impl Solvable for BySinglePossibilitiesColumns {
+    fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
+        let mut fields_to_update = vec![];
+        for col in 0..=8 {
+            let fields = match grid.get_fields_in_column(col) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+
+            let possibilities = determine_single_possibility_in_field_set(&fields);
+
+            for (row, field) in possibilities {
+                fields_to_update.push((row, col, field));
+            }
+        }
+
+        for (row, col, field) in fields_to_update {
+            grid.set_field(row, col, field);
+        }
+
+        grid
+    }
+}
+
+fn determine_single_possibility_in_field_set(fields: &Vec<&Field>) -> Vec<(usize, Field)> {
+    let mut fields_to_update = vec![];
+    let mut possibility_map = HashMap::new();
+
+    for field in fields {
+        for possibility in field.possibilities() {
+            possibility_map
+                .entry(possibility)
+                .and_modify(|p| *p += 1)
+                .or_insert(1);
+        }
+    }
+
+    for (possibility, count) in possibility_map.iter() {
+        if !count.eq(&1) {
+            continue;
+        }
+        for (index, field) in (&fields).into_iter().enumerate() {
+            if field.possibilities().contains(possibility) {
+                fields_to_update.push((index, Field::new((*possibility).clone())));
+            }
+        }
+    }
+
+    fields_to_update
 }

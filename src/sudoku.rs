@@ -68,22 +68,20 @@ impl Grid {
     }
 
     pub fn get_field(&self, row: usize, column: usize) -> Option<&Field> {
-        return self
-            .fields
-            .get(Grid::grid_index_by_row_and_column(row, column));
+        self.get_field_by_index(Grid::row_and_col_to_index(row, column))
+    }
+
+    pub fn get_field_by_index(&self, index: usize) -> Option<&Field> {
+        self.fields.get(index)
     }
 
     pub fn set_field(&mut self, row: usize, column: usize, field: Field) {
-        let index = Grid::grid_index_by_row_and_column(row, column);
-        self.fields.splice(index..index + 1, vec![field]);
+        let index = Grid::row_and_col_to_index(row, column);
+        self.set_field_by_index(index, field);
     }
 
     pub fn set_field_by_index(&mut self, index: usize, field: Field) {
         self.fields.splice(index..index + 1, vec![field]);
-    }
-
-    fn grid_index_by_row_and_column(row: usize, column: usize) -> usize {
-        return row * 9 + column;
     }
 
     pub fn is_solved(&self) -> bool {
@@ -111,6 +109,7 @@ impl Grid {
 
     pub fn get_fields_in_column(&self, column: usize) -> Result<Vec<&Field>, String> {
         let mut fields = vec![];
+
         for i in 0..9 {
             fields.push(match self.get_field(i, column) {
                 Some(field) => field,
@@ -166,8 +165,6 @@ impl Grid {
                 Ok(r) => r.clone(),
                 Err(_) => continue,
             };
-
-            crate::printable::Printable::print(&fields);
 
             let mut non_empty_fields = vec![];
             let mut empty_fields = vec![];
@@ -263,7 +260,7 @@ impl Grid {
         self.update_fields(to_update_fields);
     }
 
-    pub fn update_possibilities_in_box(&mut self) {
+    pub fn update_possibilities_in_boxes(&mut self) {
         let mut to_update_fields = vec![];
         for column in 0..=8 {
             let fields = match self.get_fields_in_box(column) {
@@ -307,5 +304,9 @@ impl Grid {
         for (index, empty_field) in to_update_fields {
             self.set_field_by_index(index, empty_field);
         }
+    }
+
+    fn row_and_col_to_index(row: usize, column: usize) -> usize {
+        return row * 9 + column;
     }
 }
