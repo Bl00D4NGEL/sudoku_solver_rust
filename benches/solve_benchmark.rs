@@ -1,22 +1,19 @@
 use std::{fs, io::Error};
 
-use sudoku_solver::solver::Solver;
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use sudoku_solver::{
-    printable::Printable,
+    solver::Solver,
     sudoku::{Field, Grid},
 };
 
-fn main() {
+fn do_main(i: i32) {
     let mut grid = match create_grid() {
         Ok(grid) => grid,
         Err(err) => panic!("Cannot create grid: {}.", err),
     };
 
-    let solver = Solver::new(true, true);
-
-    let solved_grid = solver.solve(&mut grid);
-
-    solved_grid.print();
+    let solver = Solver::new(false, false);
+    solver.solve(&mut grid);
 }
 
 fn create_grid() -> Result<Grid, Error> {
@@ -38,3 +35,10 @@ fn create_grid() -> Result<Grid, Error> {
 
     return Ok(grid);
 }
+
+fn criterion_benchmark(c: &mut Criterion) {
+    c.bench_function("main", |b| b.iter(|| do_main(black_box(20))));
+}
+
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);
