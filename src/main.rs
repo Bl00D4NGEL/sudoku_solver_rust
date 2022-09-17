@@ -4,7 +4,7 @@ use sudoku_solver::solver::Solver;
 use sudoku_solver::{printable::Printable, sudoku::Grid};
 
 fn main() {
-    let mut grid = match Grid::create_from_file("./grid8.txt") {
+    let mut grid = match Grid::create_from_file("./grid9.txt") {
         Ok(grid) => grid,
         Err(err) => panic!("Cannot create grid: {}.", err),
     };

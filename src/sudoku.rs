@@ -1,4 +1,4 @@
-use std::{fs, io::Error, vec};
+use std::{collections::HashMap, fs, io::Error, vec};
 
 #[derive(Debug)]
 pub struct FieldWithIndex {
@@ -263,9 +263,52 @@ fn calculate_new_possibilities_for_field_set(fields: Vec<FieldWithIndex>) -> Vec
         ));
     }
 
-    to_update_fields
+    advanced_possibility_removal(to_update_fields)
 }
 
+// This function increases execution time by ~75%. We might be able to get away with executing this only when a solving attempts results in no changes
+fn advanced_possibility_removal(fields: Vec<FieldWithIndex>) -> Vec<FieldWithIndex> {
+    let mut possibilities_map = HashMap::new();
+
+    for field in fields.iter() {
+        let key = field.field().possibilities().clone();
+        possibilities_map
+            .entry(key)
+            .and_modify(|p| *p += 1)
+            .or_insert(1);
+    }
+
+    let mut update_fields = vec![];
+    for field in fields.into_iter() {
+        // Only the possibilities where the pair size matches the possibility size should be removed
+        // This prevents that for example a 2,3,4 triplet is removed because 2,3,4 is only found twice instead of the
+        // required three times
+        let possibilities_to_remove: Vec<&Vec<i32>> = possibilities_map
+            .iter()
+            .filter(|(possibilities, p)| !p.eq(&&possibilities.len()))
+            .map(|(possibilities, _)| possibilities)
+            .collect();
+
+        if possibilities_to_remove.contains(&&field.field().possibilities().clone()) {
+            update_fields.push(field);
+        } else {
+            update_fields.push(FieldWithIndex::new(
+                Field::empty_with_possibilities(
+                    field
+                        .field()
+                        .possibilities()
+                        .into_iter()
+                        .filter(|p| !&possibilities_to_remove.contains(&&vec![**p]))
+                        .map(|p| *p)
+                        .collect(),
+                ),
+                field.index(),
+            ));
+        }
+    }
+
+    update_fields
+}
 impl Grid {
     pub fn create_from_file(file_name: &str) -> Result<Grid, Error> {
         let file_content = fs::read_to_string(file_name)?;

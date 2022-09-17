@@ -68,3 +68,21 @@ impl Printable for Vec<FieldWithIndex> {
         }
     }
 }
+
+impl Printable for FieldWithIndex {
+    fn print(&self) {
+        if self.field().value().is_some() {
+            println!(
+                "Field at index {} has value {}",
+                self.index(),
+                self.field().value().unwrap_or(0)
+            )
+        } else {
+            println!(
+                "Field at index {} has possibilities {:?}",
+                self.index(),
+                self.field().possibilities()
+            )
+        }
+    }
+}
