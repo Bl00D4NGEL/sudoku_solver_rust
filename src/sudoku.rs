@@ -173,7 +173,13 @@ impl Grid {
         fields
     }
 
-    pub fn update_possibilities_in_rows(&mut self) {
+    pub fn update_possibilities(&mut self) {
+        self.update_possibilities_in_rows();
+        self.update_possibilities_in_columns();
+        self.update_possibilities_in_boxes();
+    }
+
+    fn update_possibilities_in_rows(&mut self) {
         let mut to_update_fields = vec![];
         for row in 0..=8 {
             let fields = match self.get_fields_in_row(row) {
@@ -193,7 +199,7 @@ impl Grid {
         }
     }
 
-    pub fn update_possibilities_in_columns(&mut self) {
+    fn update_possibilities_in_columns(&mut self) {
         let mut to_update_fields = vec![];
         for column in 0..=8 {
             let fields = match self.get_fields_in_column(column) {
@@ -207,7 +213,7 @@ impl Grid {
         self.update_fields(to_update_fields);
     }
 
-    pub fn update_possibilities_in_boxes(&mut self) {
+    fn update_possibilities_in_boxes(&mut self) {
         let mut to_update_fields = vec![];
         for box_id in 0..=8 {
             let fields = self.get_fields_in_box(box_id);
@@ -266,9 +272,9 @@ fn calculate_new_possibilities_for_field_set(fields: Vec<FieldWithIndex>) -> Vec
     advanced_possibility_removal(to_update_fields)
 }
 
-// This function increases execution time by ~75%. We might be able to get away with executing this only when a solving attempts results in no changes
+// This function increases execution time by ~75%. We might be able to get away with executing this only when a solving attempt results in no changes
 fn advanced_possibility_removal(fields: Vec<FieldWithIndex>) -> Vec<FieldWithIndex> {
-    let mut possibilities_map = HashMap::new();
+    let possibilities_map = &mut HashMap::new();
 
     for field in fields.iter() {
         let key = field.field().possibilities().clone();
@@ -278,27 +284,38 @@ fn advanced_possibility_removal(fields: Vec<FieldWithIndex>) -> Vec<FieldWithInd
             .or_insert(1);
     }
 
-    let mut update_fields = vec![];
+    let mut fields_to_update = vec![];
     for field in fields.into_iter() {
         // Only the possibilities where the pair size matches the possibility size should be removed
         // This prevents that for example a 2,3,4 triplet is removed because 2,3,4 is only found twice instead of the
         // required three times
-        let possibilities_to_remove: Vec<&Vec<i32>> = possibilities_map
+        let possibility_pairs_to_remove: Vec<&Vec<i32>> = possibilities_map
             .iter()
-            .filter(|(possibilities, p)| !p.eq(&&possibilities.len()))
+            .filter(|(possibilities, count)| possibilities.len().eq(count))
             .map(|(possibilities, _)| possibilities)
             .collect();
 
-        if possibilities_to_remove.contains(&&field.field().possibilities().clone()) {
-            update_fields.push(field);
+        if possibility_pairs_to_remove.contains(&&field.field().possibilities().clone()) {
+            fields_to_update.push(field);
         } else {
-            update_fields.push(FieldWithIndex::new(
+            /*
+            Since the possibility pairs are vectors in vectors the new possibilities are basically all digits that are in are not in any of the
+            possibility pairs to be removed. Example:
+            If the pairs to remove are [1,2] and [3,4] the possibilities [1,5,6] would get the 1 removed as it is contained in the first pair
+            */
+            fields_to_update.push(FieldWithIndex::new(
                 Field::empty_with_possibilities(
                     field
                         .field()
                         .possibilities()
                         .into_iter()
-                        .filter(|p| !&possibilities_to_remove.contains(&&vec![**p]))
+                        .filter(|p| {
+                            possibility_pairs_to_remove
+                                .iter()
+                                .all(|possibility_pair_to_remove| {
+                                    !possibility_pair_to_remove.contains(p)
+                                })
+                        })
                         .map(|p| *p)
                         .collect(),
                 ),
@@ -307,8 +324,9 @@ fn advanced_possibility_removal(fields: Vec<FieldWithIndex>) -> Vec<FieldWithInd
         }
     }
 
-    update_fields
+    fields_to_update
 }
+
 impl Grid {
     pub fn create_from_file(file_name: &str) -> Result<Grid, Error> {
         let file_content = fs::read_to_string(file_name)?;

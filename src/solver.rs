@@ -47,9 +47,7 @@ impl Solver {
 }
 
 fn solve_with(grid: &mut Grid, solver_solvable: impl Solvable) -> &mut Grid {
-    grid.update_possibilities_in_rows();
-    grid.update_possibilities_in_columns();
-    grid.update_possibilities_in_boxes();
+    grid.update_possibilities();
     solver_solvable.solve(grid);
 
     grid
