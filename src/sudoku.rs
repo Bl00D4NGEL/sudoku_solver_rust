@@ -182,41 +182,7 @@ impl Grid {
                 Err(_) => continue,
             };
 
-            let mut non_empty_fields = vec![];
-            let mut empty_fields = vec![];
-
-            for field in fields.into_iter() {
-                if field.field().is_empty() {
-                    empty_fields.push(field);
-                } else {
-                    non_empty_fields.push(field);
-                }
-            }
-
-            if empty_fields.len() == 0 {
-                continue;
-            }
-
-            let used_digits: Vec<i32> = non_empty_fields
-                .iter()
-                .map(|f| f.field().value().unwrap_or(0))
-                .filter(|v| v.gt(&0))
-                .collect();
-
-            for empty_field in empty_fields {
-                let possibilities: Vec<i32> = empty_field
-                    .field()
-                    .possibilities()
-                    .into_iter()
-                    .filter(|p| !used_digits.contains(p))
-                    .map(|p| p.clone())
-                    .collect();
-
-                to_update_fields.push(FieldWithIndex::new(
-                    Field::empty_with_possibilities(possibilities),
-                    empty_field.index(),
-                ));
-            }
+            to_update_fields.append(&mut calculate_new_possibilities_for_field_set(fields));
         }
 
         self.update_fields(to_update_fields);
@@ -236,41 +202,7 @@ impl Grid {
                 Err(_) => continue,
             };
 
-            let mut non_empty_fields = vec![];
-            let mut empty_fields = vec![];
-
-            for field in fields.into_iter() {
-                if field.field().is_empty() {
-                    empty_fields.push(field);
-                } else {
-                    non_empty_fields.push(field);
-                }
-            }
-
-            if empty_fields.len() == 0 {
-                continue;
-            }
-
-            let used_digits: Vec<i32> = non_empty_fields
-                .iter()
-                .map(|f| f.field().value().unwrap_or(0))
-                .filter(|v| v.gt(&0))
-                .collect();
-
-            for empty_field in empty_fields {
-                let possibilities: Vec<i32> = empty_field
-                    .field()
-                    .possibilities()
-                    .into_iter()
-                    .filter(|p| !used_digits.contains(p))
-                    .map(|p| p.clone())
-                    .collect();
-
-                to_update_fields.push(FieldWithIndex::new(
-                    Field::empty_with_possibilities(possibilities),
-                    empty_field.index(),
-                ));
-            }
+            to_update_fields.append(&mut calculate_new_possibilities_for_field_set(fields));
         }
 
         self.update_fields(to_update_fields);
@@ -281,41 +213,7 @@ impl Grid {
         for box_id in 0..=8 {
             let fields = self.get_fields_in_box(box_id);
 
-            let mut non_empty_fields = vec![];
-            let mut empty_fields = vec![];
-
-            for field in fields {
-                if field.field().is_empty() {
-                    empty_fields.push(field);
-                } else {
-                    non_empty_fields.push(field);
-                }
-            }
-
-            if empty_fields.len() == 0 {
-                continue;
-            }
-
-            let used_digits: Vec<i32> = non_empty_fields
-                .iter()
-                .map(|f| f.field().value().unwrap_or(0))
-                .filter(|v| v.gt(&0))
-                .collect();
-
-            for empty_field in empty_fields {
-                let possibilities: Vec<i32> = empty_field
-                    .field()
-                    .possibilities()
-                    .into_iter()
-                    .filter(|p| !used_digits.contains(p))
-                    .map(|p| p.clone())
-                    .collect();
-
-                to_update_fields.push(FieldWithIndex::new(
-                    Field::empty_with_possibilities(possibilities),
-                    empty_field.index(),
-                ));
-            }
+            to_update_fields.append(&mut calculate_new_possibilities_for_field_set(fields));
         }
 
         for field in to_update_fields {
@@ -326,6 +224,47 @@ impl Grid {
     fn row_and_col_to_index(row: usize, column: usize) -> usize {
         return row * 9 + column;
     }
+}
+
+fn calculate_new_possibilities_for_field_set(fields: Vec<FieldWithIndex>) -> Vec<FieldWithIndex> {
+    let mut non_empty_fields = vec![];
+    let mut empty_fields = vec![];
+
+    for field in fields.into_iter() {
+        if field.field().is_empty() {
+            empty_fields.push(field);
+        } else {
+            non_empty_fields.push(field);
+        }
+    }
+
+    if empty_fields.len() == 0 {
+        return vec![];
+    }
+
+    let used_digits: Vec<i32> = non_empty_fields
+        .iter()
+        .map(|f| f.field().value().unwrap_or(0))
+        .filter(|v| v.gt(&0))
+        .collect();
+
+    let mut to_update_fields = vec![];
+    for empty_field in empty_fields {
+        let possibilities: Vec<i32> = empty_field
+            .field()
+            .possibilities()
+            .into_iter()
+            .filter(|p| !used_digits.contains(p))
+            .map(|p| p.clone())
+            .collect();
+
+        to_update_fields.push(FieldWithIndex::new(
+            Field::empty_with_possibilities(possibilities),
+            empty_field.index(),
+        ));
+    }
+
+    return to_update_fields;
 }
 
 impl Grid {
