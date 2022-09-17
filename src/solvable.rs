@@ -111,13 +111,14 @@ pub struct ByPossibilities {}
 
 impl Solvable for ByPossibilities {
     fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
-        for (i, field) in grid.fields().clone().iter().enumerate() {
+        let mut fields_to_update = vec![];
+        for (i, field) in grid.fields().iter().enumerate() {
             if field.possibilities().len() == 1 {
-                grid.set_field(i, Field::new(field.possibilities()[0]));
+                fields_to_update.push(FieldWithIndex::new(Field::new(field.possibilities()[0]), i));
             }
         }
 
-        grid
+        update_fields_in_grid(fields_to_update, grid)
     }
 }
 
