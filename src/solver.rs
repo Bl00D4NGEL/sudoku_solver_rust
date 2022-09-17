@@ -36,9 +36,7 @@ impl Solver {
         }
 
         if self.should_print {
-            println!("Grid not solved");
             grid.print();
-            println!();
         }
         if !self.sleep_duration.is_zero() {
             std::thread::sleep(self.sleep_duration);

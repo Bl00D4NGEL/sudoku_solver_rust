@@ -6,6 +6,11 @@ pub trait Printable {
 
 impl Printable for Grid {
     fn print(&self) {
+        if self.is_solved() {
+            println!("Grid solved!");
+        } else {
+            println!("Grid not solved");
+        }
         for (i, row) in self.fields().chunks(9).enumerate() {
             println!(
                 "{}: {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
@@ -21,6 +26,7 @@ impl Printable for Grid {
                 row[8].value().unwrap_or(0)
             )
         }
+        println!();
     }
 }
 
