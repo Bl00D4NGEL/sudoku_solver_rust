@@ -1,4 +1,24 @@
-use std::vec;
+use std::{fs, io::Error, vec};
+
+#[derive(Debug)]
+pub struct FieldWithIndex {
+    field: Field,
+    index: usize,
+}
+
+impl FieldWithIndex {
+    pub fn new(field: Field, index: usize) -> FieldWithIndex {
+        FieldWithIndex { field, index }
+    }
+
+    pub fn field(&self) -> Field {
+        self.field.clone()
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Field {
@@ -67,20 +87,14 @@ impl Grid {
         &self.fields
     }
 
-    pub fn get_field(&self, row: usize, column: usize) -> Option<&Field> {
-        self.get_field_by_index(Grid::row_and_col_to_index(row, column))
+    pub fn get_field(&self, index: usize) -> Option<FieldWithIndex> {
+        match self.fields.get(index) {
+            Some(field) => Some(FieldWithIndex::new(field.clone(), index)),
+            None => None,
+        }
     }
 
-    pub fn get_field_by_index(&self, index: usize) -> Option<&Field> {
-        self.fields.get(index)
-    }
-
-    pub fn set_field(&mut self, row: usize, column: usize, field: Field) {
-        let index = Grid::row_and_col_to_index(row, column);
-        self.set_field_by_index(index, field);
-    }
-
-    pub fn set_field_by_index(&mut self, index: usize, field: Field) {
+    pub fn set_field(&mut self, index: usize, field: Field) {
         self.fields.splice(index..index + 1, vec![field]);
     }
 
@@ -94,11 +108,12 @@ impl Grid {
         return true;
     }
 
-    pub fn get_fields_in_row(&self, row: usize) -> Result<Vec<&Field>, String> {
+    pub fn get_fields_in_row(&self, row: usize) -> Result<Vec<FieldWithIndex>, String> {
         let mut fields = vec![];
 
         for i in 0..9 {
-            fields.push(match self.get_field(row, i) {
+            let index = Grid::row_and_col_to_index(row, i);
+            fields.push(match self.get_field(index) {
                 Some(field) => field,
                 None => return Err(String::from("Cannot find field")),
             });
@@ -107,11 +122,12 @@ impl Grid {
         Ok(fields)
     }
 
-    pub fn get_fields_in_column(&self, column: usize) -> Result<Vec<&Field>, String> {
+    pub fn get_fields_in_column(&self, column: usize) -> Result<Vec<FieldWithIndex>, String> {
         let mut fields = vec![];
 
         for i in 0..9 {
-            fields.push(match self.get_field(i, column) {
+            let index = Grid::row_and_col_to_index(i, column);
+            fields.push(match self.get_field(index) {
                 Some(field) => field,
                 None => return Err(String::from("Cannot find field")),
             });
@@ -120,7 +136,7 @@ impl Grid {
         Ok(fields)
     }
 
-    pub fn get_fields_in_box(&self, box_id: usize) -> Result<Vec<(usize, &Field)>, String> {
+    pub fn get_fields_in_box(&self, box_id: usize) -> Vec<FieldWithIndex> {
         // Box 0  0, 1, 2, 9,10,11,18,19,20
         // Box 1  3, 4, 5,12,13,14,21,22,23
         // Box 2  6, 7, 8,15,16,17,24,25,26
@@ -149,29 +165,29 @@ impl Grid {
         };
         let mut fields = vec![];
         for i in [0, 1, 2, 9, 10, 11, 18, 19, 20] {
-            fields.push((
+            fields.push(FieldWithIndex::new(
+                self.fields[box_id * 3 + i + extra_index].clone(),
                 box_id * 3 + i + extra_index,
-                &self.fields[box_id * 3 + i + extra_index],
             ));
         }
 
-        Ok(fields)
+        fields
     }
 
     pub fn update_possibilities_in_rows(&mut self) {
         let mut to_update_fields = vec![];
         for row in 0..=8 {
             let fields = match self.get_fields_in_row(row) {
-                Ok(r) => r.clone(),
+                Ok(r) => r,
                 Err(_) => continue,
             };
 
             let mut non_empty_fields = vec![];
             let mut empty_fields = vec![];
 
-            for (column, field) in fields.into_iter().enumerate() {
-                if field.is_empty() {
-                    empty_fields.push((column, field));
+            for field in fields.into_iter() {
+                if field.field().is_empty() {
+                    empty_fields.push(field);
                 } else {
                     non_empty_fields.push(field);
                 }
@@ -183,22 +199,22 @@ impl Grid {
 
             let used_digits: Vec<i32> = non_empty_fields
                 .iter()
-                .map(|f| f.value().unwrap_or(0))
+                .map(|f| f.field().value().unwrap_or(0))
                 .filter(|v| v.gt(&0))
                 .collect();
 
-            for (column, empty_field) in empty_fields {
+            for empty_field in empty_fields {
                 let possibilities: Vec<i32> = empty_field
+                    .field()
                     .possibilities()
                     .into_iter()
                     .filter(|p| !used_digits.contains(p))
                     .map(|p| p.clone())
                     .collect();
 
-                to_update_fields.push((
-                    row,
-                    column,
+                to_update_fields.push(FieldWithIndex::new(
                     Field::empty_with_possibilities(possibilities),
+                    empty_field.index(),
                 ));
             }
         }
@@ -206,9 +222,9 @@ impl Grid {
         self.update_fields(to_update_fields);
     }
 
-    fn update_fields(&mut self, params: Vec<(usize, usize, Field)>) {
-        for (row, column, empty_field) in params {
-            self.set_field(row, column, empty_field);
+    fn update_fields(&mut self, fields: Vec<FieldWithIndex>) {
+        for field in fields {
+            self.set_field(field.index(), field.field());
         }
     }
 
@@ -216,16 +232,16 @@ impl Grid {
         let mut to_update_fields = vec![];
         for column in 0..=8 {
             let fields = match self.get_fields_in_column(column) {
-                Ok(r) => r.clone(),
+                Ok(r) => r,
                 Err(_) => continue,
             };
 
             let mut non_empty_fields = vec![];
             let mut empty_fields = vec![];
 
-            for (row, field) in fields.into_iter().enumerate() {
-                if field.is_empty() {
-                    empty_fields.push((row, field));
+            for field in fields.into_iter() {
+                if field.field().is_empty() {
+                    empty_fields.push(field);
                 } else {
                     non_empty_fields.push(field);
                 }
@@ -237,22 +253,22 @@ impl Grid {
 
             let used_digits: Vec<i32> = non_empty_fields
                 .iter()
-                .map(|f| f.value().unwrap_or(0))
+                .map(|f| f.field().value().unwrap_or(0))
                 .filter(|v| v.gt(&0))
                 .collect();
 
-            for (row, empty_field) in empty_fields {
+            for empty_field in empty_fields {
                 let possibilities: Vec<i32> = empty_field
+                    .field()
                     .possibilities()
                     .into_iter()
                     .filter(|p| !used_digits.contains(p))
                     .map(|p| p.clone())
                     .collect();
 
-                to_update_fields.push((
-                    row,
-                    column,
+                to_update_fields.push(FieldWithIndex::new(
                     Field::empty_with_possibilities(possibilities),
+                    empty_field.index(),
                 ));
             }
         }
@@ -262,18 +278,15 @@ impl Grid {
 
     pub fn update_possibilities_in_boxes(&mut self) {
         let mut to_update_fields = vec![];
-        for column in 0..=8 {
-            let fields = match self.get_fields_in_box(column) {
-                Ok(r) => r.clone(),
-                Err(_) => continue,
-            };
+        for box_id in 0..=8 {
+            let fields = self.get_fields_in_box(box_id);
 
             let mut non_empty_fields = vec![];
             let mut empty_fields = vec![];
 
-            for (index, field) in fields {
-                if field.is_empty() {
-                    empty_fields.push((index, field));
+            for field in fields {
+                if field.field().is_empty() {
+                    empty_fields.push(field);
                 } else {
                     non_empty_fields.push(field);
                 }
@@ -285,28 +298,55 @@ impl Grid {
 
             let used_digits: Vec<i32> = non_empty_fields
                 .iter()
-                .map(|f| f.value().unwrap_or(0))
+                .map(|f| f.field().value().unwrap_or(0))
                 .filter(|v| v.gt(&0))
                 .collect();
 
-            for (index, empty_field) in empty_fields {
+            for empty_field in empty_fields {
                 let possibilities: Vec<i32> = empty_field
+                    .field()
                     .possibilities()
                     .into_iter()
                     .filter(|p| !used_digits.contains(p))
                     .map(|p| p.clone())
                     .collect();
 
-                to_update_fields.push((index, Field::empty_with_possibilities(possibilities)));
+                to_update_fields.push(FieldWithIndex::new(
+                    Field::empty_with_possibilities(possibilities),
+                    empty_field.index(),
+                ));
             }
         }
 
-        for (index, empty_field) in to_update_fields {
-            self.set_field_by_index(index, empty_field);
+        for field in to_update_fields {
+            self.set_field(field.index(), field.field());
         }
     }
 
     fn row_and_col_to_index(row: usize, column: usize) -> usize {
         return row * 9 + column;
+    }
+}
+
+impl Grid {
+    pub fn create_from_file(file_name: &str) -> Result<Grid, Error> {
+        let file_content = fs::read_to_string(file_name)?;
+
+        let mut grid = Grid::create_empty();
+        let mut index: usize = 0;
+        for line in file_content.lines().into_iter() {
+            for s in line.split_whitespace().into_iter() {
+                grid.set_field(
+                    index,
+                    match s.parse() {
+                        Ok(v) => Field::new(v),
+                        Err(_) => Field::empty(),
+                    },
+                );
+                index += 1;
+            }
+        }
+
+        return Ok(grid);
     }
 }

@@ -1,42 +1,43 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, vec};
 
-use crate::sudoku::{Field, Grid};
+use crate::sudoku::{Field, FieldWithIndex, Grid};
 
 pub trait Solvable {
     fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid;
+}
+
+fn update_fields_in_grid(fields: Vec<FieldWithIndex>, grid: &mut Grid) -> &mut Grid {
+    fields.into_iter().for_each(|field| {
+        grid.set_field(field.index(), field.field());
+    });
+
+    grid
 }
 
 pub struct ByRows {}
 
 impl Solvable for ByRows {
     fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
+        let mut fields_to_update = vec![];
         for row in 0..=8 {
-            let cloned_grid = grid.clone();
-            let fields = match cloned_grid.get_fields_in_row(row) {
-                Ok(v) => v,
+            let fields = match grid.get_fields_in_row(row) {
+                Ok(f) => f,
                 Err(_) => continue,
             };
-
-            let missing_digit = match determine_missing_digit_in_fields(&fields) {
-                Some(d) => d,
-                None => continue,
-            };
-
-            for (column, field) in fields.iter().enumerate() {
-                if field.is_empty() {
-                    grid.set_field(row, column, Field::new(missing_digit));
-                }
-            }
+            fields_to_update.append(&mut match set_field_value_if_one_digit_missing(fields) {
+                Some(v) => v,
+                None => vec![],
+            });
         }
 
-        grid
+        update_fields_in_grid(fields_to_update, grid)
     }
 }
 
-fn determine_missing_digit_in_fields(fields: &Vec<&Field>) -> Option<i32> {
+fn determine_missing_digit_in_fields(fields: &Vec<FieldWithIndex>) -> Option<i32> {
     let used_digits: Vec<i32> = fields
         .iter()
-        .map(|f| f.value().unwrap_or(0))
+        .map(|f| f.field().value().unwrap_or(0))
         .filter(|f| f.gt(&0))
         .collect();
 
@@ -56,36 +57,63 @@ pub struct ByColumns {}
 
 impl Solvable for ByColumns {
     fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
+        let mut fields_to_update = vec![];
         for column in 0..=8 {
-            let cloned_grid = grid.clone();
-            let fields = match cloned_grid.get_fields_in_column(column) {
-                Ok(v) => v,
+            let fields = match grid.get_fields_in_column(column) {
+                Ok(f) => f,
                 Err(_) => continue,
             };
-
-            let missing_digit = match determine_missing_digit_in_fields(&fields) {
-                Some(d) => d,
-                None => continue,
-            };
-
-            for (row, field) in fields.iter().enumerate() {
-                if field.is_empty() {
-                    grid.set_field(row, column, Field::new(missing_digit));
-                }
-            }
+            fields_to_update.append(&mut match set_field_value_if_one_digit_missing(fields) {
+                Some(v) => v,
+                None => vec![],
+            });
         }
 
-        grid
+        update_fields_in_grid(fields_to_update, grid)
     }
 }
 
+pub struct ByBoxes {}
+
+impl Solvable for ByBoxes {
+    fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
+        let mut fields_to_update = vec![];
+        for box_id in 0..=8 {
+            let fields = grid.get_fields_in_box(box_id);
+            fields_to_update.append(&mut match set_field_value_if_one_digit_missing(fields) {
+                Some(v) => v,
+                None => vec![],
+            });
+        }
+
+        update_fields_in_grid(fields_to_update, grid)
+    }
+}
+
+fn set_field_value_if_one_digit_missing(
+    fields: Vec<FieldWithIndex>,
+) -> Option<Vec<FieldWithIndex>> {
+    let missing_digit = determine_missing_digit_in_fields(&fields)?;
+
+    let mut fields_to_update = vec![];
+    for field in fields.into_iter() {
+        if field.field().is_empty() {
+            fields_to_update.push(FieldWithIndex::new(
+                Field::new(missing_digit),
+                field.index(),
+            ));
+        }
+    }
+
+    Some(fields_to_update)
+}
 pub struct ByPossibilities {}
 
 impl Solvable for ByPossibilities {
     fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
         for (i, field) in grid.fields().clone().iter().enumerate() {
             if field.possibilities().len() == 1 {
-                grid.set_field_by_index(i, Field::new(field.possibilities()[0]));
+                grid.set_field(i, Field::new(field.possibilities()[0]));
             }
         }
 
@@ -100,57 +128,71 @@ impl Solvable for BySinglePossibilitiesRows {
         let mut fields_to_update = vec![];
         for row in 0..=8 {
             let fields = match grid.get_fields_in_row(row) {
-                Ok(v) => v,
+                Ok(f) => f,
                 Err(_) => continue,
             };
 
-            let possibilities = determine_single_possibility_in_field_set(&fields);
-
-            for (col, field) in possibilities {
-                fields_to_update.push((row, col, field));
-            }
+            fields_to_update.append(&mut set_field_value_if_only_possibility(fields));
         }
 
-        for (row, col, field) in fields_to_update {
-            grid.set_field(row, col, field);
-        }
-
-        grid
+        update_fields_in_grid(fields_to_update, grid)
     }
 }
 
+fn set_field_value_if_only_possibility(fields: Vec<FieldWithIndex>) -> Vec<FieldWithIndex> {
+    let possibilities = determine_possibilities_in_field_set(&fields);
+
+    let mut fields_to_update = vec![];
+    for field in fields.into_iter() {
+        for (possibility, count) in possibilities.clone().into_iter() {
+            if !count.eq(&1) {
+                continue;
+            }
+            if field.field().possibilities().contains(&possibility) {
+                fields_to_update.push(FieldWithIndex::new(Field::new(possibility), field.index()));
+            }
+        }
+    }
+
+    fields_to_update
+}
 pub struct BySinglePossibilitiesColumns {}
 
 impl Solvable for BySinglePossibilitiesColumns {
     fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
         let mut fields_to_update = vec![];
-        for col in 0..=8 {
-            let fields = match grid.get_fields_in_column(col) {
-                Ok(v) => v,
+        for column in 0..=8 {
+            let fields = match grid.get_fields_in_column(column) {
+                Ok(f) => f,
                 Err(_) => continue,
             };
 
-            let possibilities = determine_single_possibility_in_field_set(&fields);
-
-            for (row, field) in possibilities {
-                fields_to_update.push((row, col, field));
-            }
+            fields_to_update.append(&mut set_field_value_if_only_possibility(fields));
         }
 
-        for (row, col, field) in fields_to_update {
-            grid.set_field(row, col, field);
+        update_fields_in_grid(fields_to_update, grid)
+    }
+}
+pub struct BySinglePossibilitiesBoxes {}
+
+impl Solvable for BySinglePossibilitiesBoxes {
+    fn solve<'a>(&self, grid: &'a mut Grid) -> &'a mut Grid {
+        let mut fields_to_update = vec![];
+        for box_id in 0..=8 {
+            let fields = grid.get_fields_in_box(box_id);
+
+            fields_to_update.append(&mut set_field_value_if_only_possibility(fields));
         }
 
-        grid
+        update_fields_in_grid(fields_to_update, grid)
     }
 }
 
-fn determine_single_possibility_in_field_set(fields: &Vec<&Field>) -> Vec<(usize, Field)> {
-    let mut fields_to_update = vec![];
+fn determine_possibilities_in_field_set(fields: &Vec<FieldWithIndex>) -> HashMap<i32, i32> {
     let mut possibility_map = HashMap::new();
 
-    for field in fields {
-        for possibility in field.possibilities() {
+    for field in fields.into_iter() {
+        for possibility in field.field().possibilities().clone() {
             possibility_map
                 .entry(possibility)
                 .and_modify(|p| *p += 1)
@@ -158,16 +200,5 @@ fn determine_single_possibility_in_field_set(fields: &Vec<&Field>) -> Vec<(usize
         }
     }
 
-    for (possibility, count) in possibility_map.iter() {
-        if !count.eq(&1) {
-            continue;
-        }
-        for (index, field) in (&fields).into_iter().enumerate() {
-            if field.possibilities().contains(possibility) {
-                fields_to_update.push((index, Field::new((*possibility).clone())));
-            }
-        }
-    }
-
-    fields_to_update
+    possibility_map
 }

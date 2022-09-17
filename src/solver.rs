@@ -3,8 +3,8 @@ use std::time::Duration;
 use crate::{
     printable::Printable,
     solvable::{
-        ByColumns, ByPossibilities, ByRows, BySinglePossibilitiesColumns,
-        BySinglePossibilitiesRows, Solvable,
+        ByBoxes, ByColumns, ByPossibilities, ByRows, BySinglePossibilitiesBoxes,
+        BySinglePossibilitiesColumns, BySinglePossibilitiesRows, Solvable,
     },
     sudoku::Grid,
 };
@@ -26,8 +26,10 @@ impl Solver {
         solve_with(grid, ByPossibilities {});
         solve_with(grid, ByColumns {});
         solve_with(grid, ByRows {});
+        solve_with(grid, ByBoxes {});
         solve_with(grid, BySinglePossibilitiesRows {});
         solve_with(grid, BySinglePossibilitiesColumns {});
+        solve_with(grid, BySinglePossibilitiesBoxes {});
 
         if grid.is_solved() {
             return grid;
