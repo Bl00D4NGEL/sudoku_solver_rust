@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use sudoku_solver::solver::Solver;
 use sudoku_solver::{printable::Printable, sudoku::Grid};
 
@@ -7,7 +9,7 @@ fn main() {
         Err(err) => panic!("Cannot create grid: {}.", err),
     };
 
-    let solver = Solver::new(true, true);
+    let solver = Solver::new(Duration::from_secs(1), true);
 
     let solved_grid = solver.solve(&mut grid);
 

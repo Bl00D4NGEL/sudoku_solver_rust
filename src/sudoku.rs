@@ -28,7 +28,7 @@ pub struct Field {
 
 impl Field {
     pub fn new(val: i32) -> Field {
-        if val < 1 || val > 9 {
+        if !(1..=9).contains(&val) {
             panic!("Value for field must be between 1 and 9, got {}", val)
         }
 
@@ -59,11 +59,11 @@ impl Field {
     }
 
     pub fn possibilities(&self) -> &Vec<i32> {
-        return &self.possibilities;
+        &self.possibilities
     }
 
     pub fn value(&self) -> Option<i32> {
-        return self.value;
+        self.value
     }
 }
 
@@ -88,10 +88,9 @@ impl Grid {
     }
 
     pub fn get_field(&self, index: usize) -> Option<FieldWithIndex> {
-        match self.fields.get(index) {
-            Some(field) => Some(FieldWithIndex::new(field.clone(), index)),
-            None => None,
-        }
+        self.fields
+            .get(index)
+            .map(|field| FieldWithIndex::new(field.clone(), index))
     }
 
     pub fn set_field(&mut self, index: usize, field: Field) {
@@ -105,7 +104,7 @@ impl Grid {
             }
         }
 
-        return true;
+        true
     }
 
     pub fn get_fields_in_row(&self, row: usize) -> Result<Vec<FieldWithIndex>, String> {
@@ -222,7 +221,7 @@ impl Grid {
     }
 
     fn row_and_col_to_index(row: usize, column: usize) -> usize {
-        return row * 9 + column;
+        row * 9 + column
     }
 }
 
@@ -238,7 +237,7 @@ fn calculate_new_possibilities_for_field_set(fields: Vec<FieldWithIndex>) -> Vec
         }
     }
 
-    if empty_fields.len() == 0 {
+    if empty_fields.is_empty() {
         return vec![];
     }
 
@@ -250,12 +249,12 @@ fn calculate_new_possibilities_for_field_set(fields: Vec<FieldWithIndex>) -> Vec
 
     let mut to_update_fields = vec![];
     for empty_field in empty_fields {
-        let possibilities: Vec<i32> = empty_field
+        let possibilities = empty_field
             .field()
             .possibilities()
-            .into_iter()
+            .iter()
             .filter(|p| !used_digits.contains(p))
-            .map(|p| p.clone())
+            .copied()
             .collect();
 
         to_update_fields.push(FieldWithIndex::new(
@@ -264,7 +263,7 @@ fn calculate_new_possibilities_for_field_set(fields: Vec<FieldWithIndex>) -> Vec
         ));
     }
 
-    return to_update_fields;
+    to_update_fields
 }
 
 impl Grid {
@@ -273,8 +272,8 @@ impl Grid {
 
         let mut grid = Grid::create_empty();
         let mut index: usize = 0;
-        for line in file_content.lines().into_iter() {
-            for s in line.split_whitespace().into_iter() {
+        for line in file_content.lines() {
+            for s in line.split_whitespace() {
                 grid.set_field(
                     index,
                     match s.parse() {
@@ -286,6 +285,6 @@ impl Grid {
             }
         }
 
-        return Ok(grid);
+        Ok(grid)
     }
 }

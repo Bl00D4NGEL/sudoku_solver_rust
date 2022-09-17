@@ -34,7 +34,7 @@ impl Solvable for ByRows {
     }
 }
 
-fn determine_missing_digit_in_fields(fields: &Vec<FieldWithIndex>) -> Option<i32> {
+fn determine_missing_digit_in_fields(fields: &[FieldWithIndex]) -> Option<i32> {
     let used_digits: Vec<i32> = fields
         .iter()
         .map(|f| f.field().value().unwrap_or(0))
@@ -51,7 +51,7 @@ fn determine_missing_digit_in_fields(fields: &Vec<FieldWithIndex>) -> Option<i32
         }
     }
 
-    return Option::None;
+    Option::None
 }
 pub struct ByColumns {}
 
@@ -189,10 +189,10 @@ impl Solvable for BySinglePossibilitiesBoxes {
     }
 }
 
-fn determine_possibilities_in_field_set(fields: &Vec<FieldWithIndex>) -> HashMap<i32, i32> {
+fn determine_possibilities_in_field_set(fields: &[FieldWithIndex]) -> HashMap<i32, i32> {
     let mut possibility_map = HashMap::new();
 
-    for field in fields.into_iter() {
+    for field in fields.iter() {
         for possibility in field.field().possibilities().clone() {
             possibility_map
                 .entry(possibility)

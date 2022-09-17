@@ -10,15 +10,15 @@ use crate::{
 };
 
 pub struct Solver {
-    should_sleep: bool,
+    sleep_duration: Duration,
     should_print: bool,
 }
 
 impl Solver {
-    pub fn new(should_sleep: bool, should_print: bool) -> Solver {
+    pub fn new(sleep_duration: Duration, should_print: bool) -> Solver {
         Solver {
             should_print,
-            should_sleep,
+            sleep_duration,
         }
     }
 
@@ -40,15 +40,15 @@ impl Solver {
             grid.print();
             println!();
         }
-        if self.should_sleep {
-            std::thread::sleep(Duration::new(1, 0));
+        if !self.sleep_duration.is_zero() {
+            std::thread::sleep(self.sleep_duration);
         }
 
-        return self.solve(grid);
+        self.solve(grid)
     }
 }
 
-fn solve_with<'a>(grid: &'a mut Grid, solver_solvable: impl Solvable) -> &mut Grid {
+fn solve_with(grid: &mut Grid, solver_solvable: impl Solvable) -> &mut Grid {
     grid.update_possibilities_in_rows();
     grid.update_possibilities_in_columns();
     grid.update_possibilities_in_boxes();
