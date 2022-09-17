@@ -9,12 +9,15 @@ fn do_main(grid: &mut Grid) {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let grid = match Grid::create_from_file(black_box("./grid6.txt")) {
+    let grid = match Grid::create_from_file(black_box("./grid10.txt")) {
         Ok(grid) => grid,
         Err(err) => panic!("Cannot create grid: {}.", err),
     };
-
-    c.bench_function("main", |b| b.iter(|| do_main(&mut grid.clone())));
+    c.bench_function("main", |b| {
+        b.iter(|| {
+            do_main(&mut grid.clone());
+        })
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);

@@ -1,4 +1,4 @@
-use crate::sudoku::{Field, FieldWithIndex, Grid};
+use crate::sudoku::{Field, Grid};
 
 pub trait Printable {
     fn print(&self);
@@ -45,46 +45,6 @@ impl Printable for Vec<&Field> {
             print!("{:?} ", field.value().unwrap_or(0),)
         }
         println!()
-    }
-}
-
-impl Printable for Vec<&FieldWithIndex> {
-    fn print(&self) {
-        for field in self.iter() {
-            print!("{:?} ", field.field().value().unwrap_or(0),)
-        }
-        println!()
-    }
-}
-
-impl Printable for Vec<FieldWithIndex> {
-    fn print(&self) {
-        for field in self.iter() {
-            println!(
-                "Index: {}, Value: {:?}, Possibilities: {:?}",
-                field.index(),
-                field.field().value().unwrap_or(0),
-                field.field().possibilities()
-            );
-        }
-    }
-}
-
-impl Printable for FieldWithIndex {
-    fn print(&self) {
-        if self.field().value().is_some() {
-            println!(
-                "Field at index {} has value {}",
-                self.index(),
-                self.field().value().unwrap_or(0)
-            )
-        } else {
-            println!(
-                "Field at index {} has possibilities {:?}",
-                self.index(),
-                self.field().possibilities()
-            )
-        }
     }
 }
 
