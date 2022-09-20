@@ -254,13 +254,7 @@ impl Grid {
             to_update_fields.append(&mut calculate_new_possibilities_for_field_set(fields));
         }
 
-        self.update_fields(to_update_fields);
-    }
-
-    fn update_fields(&mut self, fields: Vec<Field>) {
-        for field in fields {
-            self.set_field(field);
-        }
+        self.set_fields(to_update_fields);
     }
 
     fn update_possibilities_in_columns(&mut self) {
@@ -271,7 +265,7 @@ impl Grid {
             to_update_fields.append(&mut calculate_new_possibilities_for_field_set(fields));
         }
 
-        self.update_fields(to_update_fields);
+        self.set_fields(to_update_fields);
     }
 
     fn update_possibilities_in_boxes(&mut self) {
@@ -282,9 +276,7 @@ impl Grid {
             to_update_fields.append(&mut calculate_new_possibilities_for_field_set(fields));
         }
 
-        for field in to_update_fields {
-            self.set_field(field);
-        }
+        self.set_fields(to_update_fields);
     }
 }
 
