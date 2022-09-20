@@ -21,7 +21,7 @@ impl Solvable for BySinglePossibilitiesRows {
     }
 }
 
-fn set_field_value_if_only_possibility(fields: Vec<&Field>) -> Vec<Field> {
+fn set_field_value_if_only_possibility(fields: [&Field; 9]) -> Vec<Field> {
     let possibilities = determine_possibilities_in_field_set(&fields);
 
     let removable_possibilites: Vec<i32> = possibilities
@@ -46,7 +46,7 @@ fn set_field_value_if_only_possibility(fields: Vec<&Field>) -> Vec<Field> {
     fields_to_update
 }
 
-fn determine_possibilities_in_field_set<'a>(fields: &'a Vec<&Field>) -> HashMap<&'a i32, i32> {
+fn determine_possibilities_in_field_set<'a>(fields: &'a [&Field; 9]) -> HashMap<&'a i32, i32> {
     let mut possibility_map = HashMap::new();
 
     for field in fields.iter() {

@@ -54,31 +54,105 @@ impl Field {
 
 #[derive(Debug)]
 pub struct Grid {
-    fields: Vec<Field>,
+    fields: [Field; 81],
 }
 
 impl Grid {
     pub fn create_empty() -> Grid {
-        let mut fields: Vec<Field> = vec![];
-
-        for i in 0..81 {
-            fields.push(Field::empty(i));
-        }
+        let fields: [Field; 81] = [
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+            Field::empty(0),
+        ];
 
         Grid { fields }
     }
 
-    pub fn fields(&self) -> &Vec<Field> {
+    pub fn fields(&self) -> &[Field; 81] {
         &self.fields
     }
 
-    pub fn get_field(&self, index: usize) -> Option<&Field> {
-        self.fields.get(index)
-    }
-
     pub fn set_field(&mut self, field: Field) {
-        self.fields
-            .splice(field.index()..field.index() + 1, vec![field]);
+        let index = field.index();
+        self.fields[index] = field;
     }
 
     pub fn set_fields(&mut self, fields: Vec<Field>) {
@@ -97,29 +171,35 @@ impl Grid {
         true
     }
 
-    pub fn get_fields_in_row(&self, row: usize) -> Vec<&Field> {
-        let mut fields = vec![];
-
-        for i in 0..9 {
-            let index = Grid::row_and_col_to_index(row, i);
-            fields.push(self.get_field(index).unwrap());
-        }
-
-        fields
+    pub fn get_fields_in_row(&self, row: usize) -> [&Field; 9] {
+        return [
+            self.fields.get(row * 9 + 0).unwrap(),
+            self.fields.get(row * 9 + 1).unwrap(),
+            self.fields.get(row * 9 + 2).unwrap(),
+            self.fields.get(row * 9 + 3).unwrap(),
+            self.fields.get(row * 9 + 4).unwrap(),
+            self.fields.get(row * 9 + 5).unwrap(),
+            self.fields.get(row * 9 + 6).unwrap(),
+            self.fields.get(row * 9 + 7).unwrap(),
+            self.fields.get(row * 9 + 8).unwrap(),
+        ];
     }
 
-    pub fn get_fields_in_column(&self, column: usize) -> Vec<&Field> {
-        let mut fields = vec![];
-
-        for i in 0..9 {
-            let index = Grid::row_and_col_to_index(i, column);
-            fields.push(self.get_field(index).unwrap());
-        }
-
-        fields
+    pub fn get_fields_in_column(&self, column: usize) -> [&Field; 9] {
+        return [
+            self.fields.get(0 + column).unwrap(),
+            self.fields.get(9 + column).unwrap(),
+            self.fields.get(18 + column).unwrap(),
+            self.fields.get(27 + column).unwrap(),
+            self.fields.get(36 + column).unwrap(),
+            self.fields.get(45 + column).unwrap(),
+            self.fields.get(54 + column).unwrap(),
+            self.fields.get(63 + column).unwrap(),
+            self.fields.get(72 + column).unwrap(),
+        ];
     }
 
-    pub fn get_fields_in_box(&self, box_id: usize) -> Vec<&Field> {
+    pub fn get_fields_in_box(&self, box_id: usize) -> [&Field; 9] {
         // Box 0  0, 1, 2, 9,10,11,18,19,20
         // Box 1  3, 4, 5,12,13,14,21,22,23
         // Box 2  6, 7, 8,15,16,17,24,25,26
@@ -146,12 +226,18 @@ impl Grid {
             8 => 36,
             _ => 0,
         };
-        let mut fields = vec![];
-        for i in [0, 1, 2, 9, 10, 11, 18, 19, 20] {
-            fields.push(self.fields().get(box_id * 3 + i + extra_index).unwrap());
-        }
 
-        fields
+        return [
+            self.fields.get(box_id * 3 + 0 + extra_index).unwrap(),
+            self.fields.get(box_id * 3 + 1 + extra_index).unwrap(),
+            self.fields.get(box_id * 3 + 2 + extra_index).unwrap(),
+            self.fields.get(box_id * 3 + 9 + extra_index).unwrap(),
+            self.fields.get(box_id * 3 + 10 + extra_index).unwrap(),
+            self.fields.get(box_id * 3 + 11 + extra_index).unwrap(),
+            self.fields.get(box_id * 3 + 18 + extra_index).unwrap(),
+            self.fields.get(box_id * 3 + 19 + extra_index).unwrap(),
+            self.fields.get(box_id * 3 + 20 + extra_index).unwrap(),
+        ];
     }
 
     pub fn update_possibilities(&mut self) {
@@ -200,13 +286,9 @@ impl Grid {
             self.set_field(field);
         }
     }
-
-    fn row_and_col_to_index(row: usize, column: usize) -> usize {
-        row * 9 + column
-    }
 }
 
-fn calculate_new_possibilities_for_field_set(fields: Vec<&Field>) -> Vec<Field> {
+fn calculate_new_possibilities_for_field_set(fields: [&Field; 9]) -> Vec<Field> {
     let mut non_empty_fields = vec![];
     let mut empty_fields = vec![];
 
@@ -250,7 +332,6 @@ fn calculate_new_possibilities_for_field_set(fields: Vec<&Field>) -> Vec<Field> 
     advanced_possibility_removal(to_update_fields)
 }
 
-// This function increases execution time by ~75%. We might be able to get away with executing this only when a solving attempt results in no changes
 fn advanced_possibility_removal(fields: Vec<Field>) -> Vec<Field> {
     let possibilities_map = &mut HashMap::new();
 
