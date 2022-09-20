@@ -82,10 +82,9 @@ impl Grid {
     }
 
     pub fn set_fields(&mut self, fields: Vec<Field>) {
-        for field in fields {
-            self.fields
-                .splice(field.index()..field.index() + 1, vec![field]);
-        }
+        fields.into_iter().for_each(|field| {
+            self.set_field(field);
+        });
     }
 
     pub fn is_solved(&self) -> bool {
@@ -270,7 +269,7 @@ fn advanced_possibility_removal(fields: Vec<Field>) -> Vec<Field> {
         // required three times
         let possibility_pairs_to_remove: Vec<&Vec<i32>> = possibilities_map
             .iter()
-            .filter(|(possibilities, count)| possibilities.len().eq(count))
+            .filter(|(possibilities, count)| possibilities.len().eq(*count))
             .map(|(possibilities, _)| possibilities)
             .collect();
 
