@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs, io::Error, vec};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Field {
     value: Option<i32>,
     possibilities: Vec<i32>,
@@ -52,7 +52,7 @@ impl Field {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Grid {
     fields: Vec<Field>,
 }
@@ -79,6 +79,13 @@ impl Grid {
     pub fn set_field(&mut self, field: Field) {
         self.fields
             .splice(field.index()..field.index() + 1, vec![field]);
+    }
+
+    pub fn set_fields(&mut self, fields: Vec<Field>) {
+        for field in fields {
+            self.fields
+                .splice(field.index()..field.index() + 1, vec![field]);
+        }
     }
 
     pub fn is_solved(&self) -> bool {
@@ -298,11 +305,13 @@ fn advanced_possibility_removal(fields: Vec<Field>) -> Vec<Field> {
 
 impl Grid {
     pub fn create_from_file(file_name: &str) -> Result<Grid, Error> {
-        let file_content = fs::read_to_string(file_name)?;
+        Grid::create_from_string(&fs::read_to_string(file_name)?[..])
+    }
 
+    pub fn create_from_string(grid_str: &str) -> Result<Grid, Error> {
         let mut grid = Grid::create_empty();
         let mut index: usize = 0;
-        for line in file_content.lines() {
+        for line in grid_str.lines() {
             for s in line.split_whitespace() {
                 grid.set_field(match s.parse() {
                     Ok(v) => Field::new(v, index),
