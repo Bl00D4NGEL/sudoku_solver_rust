@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use std::{env, fs, path::PathBuf};
+
 use eframe::egui;
 use egui::Color32;
 use egui_extras::{Size, Strip, StripBuilder};
@@ -10,120 +12,54 @@ fn main() -> Result<(), eframe::Error> {
         viewport: egui::ViewportBuilder::default().with_inner_size([1080.0, 720.0]),
         ..Default::default()
     };
-    eframe::run_native(
-        "Sudoku solver",
-        options,
-        Box::new(|_| {
-            Box::new(SudokuGrid {
-                rows: vec![
-                    vec![
-                        Field::empty(),
-                        Field::filled(2),
-                        Field::filled(9),
-                        Field::filled(6),
-                        Field::filled(8),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                    ],
-                    vec![
-                        Field::filled(6),
-                        Field::filled(3),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::filled(9),
-                        Field::empty(),
-                    ],
-                    vec![
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::filled(3),
-                        Field::filled(5),
-                        Field::empty(),
-                        Field::empty(),
-                    ],
-                    vec![
-                        Field::empty(),
-                        Field::empty(),
-                        Field::filled(8),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::filled(5),
-                        Field::filled(1),
-                    ],
-                    vec![
-                        Field::filled(2),
-                        Field::filled(7),
-                        Field::filled(5),
-                        Field::empty(),
-                        Field::filled(6),
-                        Field::filled(9),
-                        Field::empty(),
-                        Field::filled(4),
-                        Field::filled(3),
-                    ],
-                    vec![
-                        Field::filled(1),
-                        Field::filled(6),
-                        Field::empty(),
-                        Field::filled(5),
-                        Field::filled(4),
-                        Field::filled(8),
-                        Field::empty(),
-                        Field::filled(7),
-                        Field::filled(9),
-                    ],
-                    vec![
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::filled(1),
-                        Field::filled(6),
-                        Field::filled(7),
-                        Field::filled(8),
-                        Field::empty(),
-                    ],
-                    vec![
-                        Field::empty(),
-                        Field::empty(),
-                        Field::filled(2),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::filled(6),
-                        Field::empty(),
-                    ],
-                    vec![
-                        Field::filled(7),
-                        Field::empty(),
-                        Field::empty(),
-                        Field::filled(3),
-                        Field::filled(5),
-                        Field::empty(),
-                        Field::filled(9),
-                        Field::empty(),
-                        Field::empty(),
-                    ],
-                ],
-            })
-        }),
-    )
+
+    let mut args = env::args();
+
+    let grid_path = PathBuf::from(args.nth(1).unwrap());
+
+    let grid = SudokuGrid::from(grid_path);
+
+    eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(grid)))
 }
 
 #[derive(Default)]
 pub struct SudokuGrid {
     rows: Vec<Vec<Field>>,
+}
+
+impl From<PathBuf> for SudokuGrid {
+    fn from(value: PathBuf) -> Self {
+        let contents = &fs::read_to_string(value).unwrap();
+        let lines = contents
+            .lines()
+            .filter(|l| !l.is_empty())
+            .collect::<Vec<&str>>();
+
+        if lines.len() != 9 {
+            panic!("File has more than 9 lines, can not create valid sudoku");
+        }
+
+        let rows: Vec<Vec<Field>> = lines
+            .iter()
+            .map(|line| {
+                line.split(' ')
+                    .map(|c| match c {
+                        "1" => Field::filled(1),
+                        "2" => Field::filled(2),
+                        "3" => Field::filled(3),
+                        "4" => Field::filled(4),
+                        "5" => Field::filled(5),
+                        "6" => Field::filled(6),
+                        "7" => Field::filled(7),
+                        "8" => Field::filled(8),
+                        "9" => Field::filled(9),
+                        _ => Field::empty(),
+                    })
+                    .collect()
+            })
+            .collect();
+        SudokuGrid { rows }
+    }
 }
 
 impl SudokuGrid {
