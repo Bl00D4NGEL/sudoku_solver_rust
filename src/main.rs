@@ -18,13 +18,20 @@ fn main() -> Result<(), eframe::Error> {
     let grid_path = PathBuf::from(args.nth(1).unwrap());
 
     let grid = SudokuGrid::from(grid_path);
+    let grid_box = Box::new(grid);
 
-    eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(grid)))
+    eframe::run_native("Sudoku solver", options, Box::new(|_| grid_box))
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Debug)]
 pub struct SudokuGrid {
     rows: Vec<Vec<Field>>,
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct Field {
+    value: Option<usize>,
+    possibilities: Vec<usize>,
 }
 
 impl From<PathBuf> for SudokuGrid {
@@ -89,42 +96,44 @@ impl SudokuGrid {
             .all(|row| row.iter().all(|f| f.value.is_some()))
     }
 
-    fn update_possibility_for_field_at(&mut self, row_idx: usize, col_idx: usize) {
-        if self.get_field_mut(row_idx, col_idx).is_none() {
-            return;
+    fn get_fields_in_row(&self, row_idx: usize) -> Option<&Vec<Field>> {
+        self.rows.get(row_idx)
+    }
+
+    fn get_fields_in_column(&self, col_idx: usize) -> Vec<&Field> {
+        let mut fields = vec![];
+
+        for i in 0..9 {
+            match self.rows.get(i) {
+                None => {}
+                Some(row) => match row.get(col_idx) {
+                    None => {}
+                    Some(field) => fields.push(field),
+                },
+            }
         }
 
-        // get fields of row_idx
-        let row_field_values: Vec<usize> = self.rows.get(row_idx).map_or(vec![], |fields| {
-            fields.iter().filter_map(|f| f.value).collect()
-        });
+        (0..9)
+            .filter_map(|i| self.rows.get(i)?.get(col_idx))
+            .collect()
+    }
 
-        // get fields of col_idx
-        let column_field_values: Vec<usize> = (0..9)
-            .filter_map(|i| {
-                self.rows
-                    .get(i)
-                    .and_then(|fields| match fields.get(col_idx) {
-                        Some(f) => f.value,
-                        None => None,
-                    })
-            })
-            .collect();
+    fn get_box_id_for_row_and_column(row: usize, column: usize) -> Option<usize> {
+        match (row, column) {
+            (0..=2, 0..=2) => Some(0),
+            (0..=2, 3..=5) => Some(1),
+            (0..=2, 6..=8) => Some(2),
+            (3..=5, 0..=2) => Some(3),
+            (3..=5, 3..=5) => Some(4),
+            (3..=5, 6..=8) => Some(5),
+            (6..=8, 0..=2) => Some(6),
+            (6..=8, 3..=5) => Some(7),
+            (6..=8, 6..=8) => Some(8),
+            _ => None,
+        }
+    }
 
-        // get fields of box #
-        let box_id: usize = match (row_idx, col_idx) {
-            (0..=2, 0..=2) => 0,
-            (0..=2, 3..=5) => 1,
-            (0..=2, 6..=8) => 2,
-            (3..=5, 0..=2) => 3,
-            (3..=5, 3..=5) => 4,
-            (3..=5, 6..=8) => 5,
-            (6..=8, 0..=2) => 6,
-            (6..=8, 3..=5) => 7,
-            (6..=8, 6..=8) => 8,
-            _ => panic!("Invalid row {row_idx} and column {col_idx} given"),
-        };
-
+    fn get_fields_in_box(&self, box_id: usize) -> Vec<&Field> {
         let indexes: Vec<(usize, usize)> = match box_id {
             0..=2 => vec![
                 (0, box_id * 3),
@@ -162,10 +171,38 @@ impl SudokuGrid {
             _ => vec![],
         };
 
-        let box_values: Vec<usize> = indexes
+        indexes
             .into_iter()
-            .filter_map(|(row, col)| self.get_field(row, col)?.value)
+            .filter_map(|(row, col)| self.get_field(row, col))
+            .collect()
+    }
+
+    fn update_possibility_for_field_at(&mut self, row_idx: usize, col_idx: usize) {
+        if self.get_field_mut(row_idx, col_idx).is_none() {
+            return;
+        }
+
+        let row_field_values: Vec<usize> =
+            self.get_fields_in_row(row_idx).map_or(vec![], |fields| {
+                fields.iter().filter_map(|f| f.value).collect()
+            });
+
+        let column_field_values: Vec<usize> = self
+            .get_fields_in_column(col_idx)
+            .iter()
+            .filter_map(|f| f.value)
             .collect();
+
+        let box_id = Self::get_box_id_for_row_and_column(row_idx, col_idx);
+
+        let box_values: Vec<usize> = match box_id {
+            None => vec![],
+            Some(id) => self
+                .get_fields_in_box(id)
+                .iter()
+                .filter_map(|f| f.value)
+                .collect(),
+        };
 
         let mut values = [box_values, row_field_values, column_field_values]
             .iter()
@@ -182,11 +219,6 @@ impl SudokuGrid {
             }
         }
     }
-}
-
-pub struct Field {
-    value: Option<usize>,
-    possibilities: Vec<usize>,
 }
 
 impl Field {
