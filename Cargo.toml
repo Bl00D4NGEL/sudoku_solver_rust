@@ -13,7 +13,3 @@ env_logger = "0.10.1"
 
 [dev-dependencies]
 criterion = "0.4"
-
-[[bench]]
-name = "solve_benchmark"
-harness = false
