@@ -18,9 +18,7 @@ fn main() -> Result<(), eframe::Error> {
     let grid_path = PathBuf::from(args.nth(1).unwrap());
 
     let grid = SudokuGrid::from(grid_path);
-    let grid_box = Box::new(grid);
-
-    eframe::run_native("Sudoku solver", options, Box::new(|_| grid_box))
+    eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(grid)))
 }
 
 #[derive(Default, Clone, Debug)]
@@ -49,7 +47,9 @@ impl From<PathBuf> for SudokuGrid {
         let rows: Vec<Vec<Field>> = lines
             .iter()
             .map(|line| {
-                line.split(' ')
+                let fields = line
+                    .trim()
+                    .split(' ')
                     .map(|c| match c {
                         "1" => Field::filled(1),
                         "2" => Field::filled(2),
@@ -62,7 +62,13 @@ impl From<PathBuf> for SudokuGrid {
                         "9" => Field::filled(9),
                         _ => Field::empty(),
                     })
-                    .collect()
+                    .collect::<Vec<Field>>();
+
+                if fields.len() != 9 {
+                    panic!("Row has more than 9 fields, can not create valid sudoku");
+                }
+
+                fields
             })
             .collect();
         SudokuGrid { rows }
@@ -134,6 +140,13 @@ impl SudokuGrid {
     }
 
     fn get_fields_in_box(&self, box_id: usize) -> Vec<&Field> {
+        self.get_fields_in_box_with_positions(box_id)
+            .into_iter()
+            .map(|(f, _)| f)
+            .collect()
+    }
+
+    fn get_fields_in_box_with_positions(&self, box_id: usize) -> Vec<(&Field, (usize, usize))> {
         let indexes: Vec<(usize, usize)> = match box_id {
             0..=2 => vec![
                 (0, box_id * 3),
@@ -173,7 +186,7 @@ impl SudokuGrid {
 
         indexes
             .into_iter()
-            .filter_map(|(row, col)| self.get_field(row, col))
+            .filter_map(|(row, col)| self.get_field(row, col).map(|field| (field, (row, col))))
             .collect()
     }
 
@@ -212,12 +225,64 @@ impl SudokuGrid {
 
         values.dedup();
 
+        let all_row_possibilities = if let Some(row_fields) = self.get_fields_in_row(row_idx) {
+            Self::count_possibilities_for_fields(row_fields.iter().collect())
+        } else {
+            [0; 10]
+        };
+
+        let all_column_possibilities =
+            Self::count_possibilities_for_fields(self.get_fields_in_column(col_idx));
+
+        let all_box_possibilities =
+            if let Some(box_id) = Self::get_box_id_for_row_and_column(row_idx, col_idx) {
+                Self::count_possibilities_for_fields(self.get_fields_in_box(box_id))
+            } else {
+                [0; 10]
+            };
+
         if let Some(field) = self.get_field_mut(row_idx, col_idx) {
             field.possibilities.retain(|p| !values.contains(p));
             if field.possibilities.len() == 1 {
                 *field = Field::filled(*field.possibilities.first().unwrap());
+                return;
+            }
+
+            for possibility in field.possibilities.clone().iter() {
+                if let Some(p) = all_row_possibilities.get(*possibility) {
+                    if *p == 1 {
+                        *field = Field::filled(*possibility);
+                        println!("[row] {possibility} was never found, assuming {row_idx} / {col_idx} is the only place it can go");
+                    }
+                }
+                if let Some(p) = all_column_possibilities.get(*possibility) {
+                    if *p == 1 {
+                        *field = Field::filled(*possibility);
+                        println!("[column] {possibility} was never found, assuming {row_idx} / {col_idx} is the only place it can go");
+                    }
+                }
+                if let Some(p) = all_box_possibilities.get(*possibility) {
+                    if *p == 1 {
+                        *field = Field::filled(*possibility);
+                        println!("[box] {possibility} was never found, assuming {row_idx} / {col_idx} is the only place it can go");
+                    }
+                }
             }
         }
+    }
+
+    fn count_possibilities_for_fields(fields: Vec<&Field>) -> [usize; 10] {
+        let mut all_possibilities = [0; 10];
+
+        for field in fields.iter() {
+            for possibility in field.possibilities.iter() {
+                if let Some(p) = all_possibilities.get_mut(*possibility) {
+                    *p += 1;
+                }
+            }
+        }
+
+        all_possibilities
     }
 }
 
