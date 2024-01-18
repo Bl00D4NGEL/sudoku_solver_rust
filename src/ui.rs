@@ -1,12 +1,13 @@
-use crate::{Field, SudokuGrid};
-use eframe::egui;
+use crate::{solver::SudokuSolver, Field, SudokuGrid};
+use eframe::{egui, App};
 use egui::Color32;
 use egui_extras::{Size, Strip, StripBuilder};
 
-impl eframe::App for SudokuGrid {
+impl App for SudokuSolver {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.ui(ui);
+            self.solve();
+            self.grid_mut().ui(ui);
         });
     }
 }

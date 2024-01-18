@@ -3,7 +3,9 @@
 use std::{env, fs, path::PathBuf};
 
 use eframe::egui;
+use solver::{SolveByX, SolveByY, SudokuSolver};
 
+mod solver;
 mod ui;
 
 fn main() -> Result<(), eframe::Error> {
@@ -17,8 +19,12 @@ fn main() -> Result<(), eframe::Error> {
 
     let grid_path = PathBuf::from(args.nth(1).unwrap());
 
-    let grid = SudokuGrid::from(grid_path);
-    eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(grid)))
+    let grid = SudokuGrid::from(grid_path.clone());
+    let mut solver = SudokuSolver::new(grid);
+    solver.add_solving_strategy(Box::new(SolveByX {}));
+    solver.add_solving_strategy(Box::new(SolveByY {}));
+
+    eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(solver)))
 }
 
 #[derive(Default, Clone, Debug)]
@@ -299,6 +305,10 @@ impl Field {
             value: Some(value),
             possibilities: vec![],
         }
+    }
+
+    fn remove_possibility(&mut self, possibility: usize) {
+        self.possibilities.retain(|p| *p != possibility)
     }
 
     fn without_possibility(&self, possibility: usize) -> Self {
