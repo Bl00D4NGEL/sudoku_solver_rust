@@ -1,4 +1,7 @@
-use crate::{solver::SudokuSolver, Field, SudokuGrid};
+use crate::{
+    solver::{SolveStep, SudokuSolver},
+    Field, SudokuGrid,
+};
 use eframe::{egui, App};
 use egui::Color32;
 use egui_extras::{Size, Strip, StripBuilder};
@@ -6,20 +9,17 @@ use egui_extras::{Size, Strip, StripBuilder};
 impl App for SudokuSolver {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            let changes = self.grid_mut().ui(ui);
+            self.apply_solve_steps(changes);
             self.solve();
-            self.grid_mut().ui(ui);
         });
     }
 }
 
-pub trait View {
-    fn ui(&mut self, ui: &mut egui::Ui);
-}
-
-impl View for SudokuGrid {
-    fn ui(&mut self, ui: &mut egui::Ui) {
+impl SudokuGrid {
+    fn ui(&mut self, ui: &mut egui::Ui) -> Vec<((usize, usize), SolveStep)> {
         let mut changes = vec![];
-        self.update_possibities_for_all_fields();
+        // self.update_possibities_for_all_fields();
 
         StripBuilder::new(ui)
             .size(Size::relative(1.0))
@@ -36,8 +36,8 @@ impl View for SudokuGrid {
                         field_strip.cell(|ui| {
                             if let Some(field) = self.get_field(row_idx, col_idx) {
                                 let p = self.draw_field(field, ui);
-                                if let Some(new_value) = p {
-                                    changes.push((row_idx, col_idx, new_value));
+                                if let Some(solve_step) = p {
+                                    changes.push(((field.row, field.column), solve_step));
                                 }
                             }
                         });
@@ -45,16 +45,12 @@ impl View for SudokuGrid {
                 });
             });
 
-        for (row_idx, col_idx, changed_field) in changes {
-            if let Some(field) = self.get_field_mut(row_idx, col_idx) {
-                *field = changed_field;
-            }
-        }
+        changes
     }
 }
 
 impl SudokuGrid {
-    fn draw_field(&self, field: &Field, ui: &mut egui::Ui) -> Option<Field> {
+    fn draw_field(&self, field: &Field, ui: &mut egui::Ui) -> Option<SolveStep> {
         let dark_mode = ui.visuals().dark_mode;
         let faded_color = ui.visuals().window_fill();
         let faded_color = |color: Color32| -> Color32 {
@@ -63,7 +59,7 @@ impl SudokuGrid {
             egui::lerp(Rgba::from(color)..=Rgba::from(faded_color), t).into()
         };
 
-        let mut new_value: Option<Field> = None;
+        let mut solve_step: Option<SolveStep> = None;
 
         match field.value {
             None => {
@@ -84,10 +80,11 @@ impl SudokuGrid {
 
                                 let response = response.interact(egui::Sense::click());
                                 if response.clicked() {
-                                    new_value = Some(Field::filled(possibility));
+                                    solve_step = Some(SolveStep::SetValue(possibility));
                                 }
                                 response.context_menu(|ui| {
-                                    new_value = Some(field.without_possibility(possibility));
+                                    solve_step =
+                                        Some(SolveStep::RemovePossibilities(vec![possibility]));
                                     ui.close_menu();
                                 });
                             } else {
@@ -105,18 +102,12 @@ impl SudokuGrid {
                 );
 
                 ui.centered_and_justified(|ui| {
-                    let response = ui.label(format!("{}", value));
-
-                    let response = response.interact(egui::Sense::click());
-                    response.context_menu(|ui| {
-                        new_value = Some(Field::empty());
-                        ui.close_menu();
-                    });
+                    ui.label(format!("{}", value));
                 });
             }
         }
 
-        new_value
+        solve_step
     }
 
     fn draw_grid<F>(

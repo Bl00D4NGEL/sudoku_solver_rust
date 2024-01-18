@@ -3,7 +3,7 @@
 use std::{env, fs, path::PathBuf};
 
 use eframe::egui;
-use solver::{SolveByX, SolveByY, SudokuSolver};
+use solver::SudokuSolver;
 
 mod solver;
 mod ui;
@@ -20,10 +20,7 @@ fn main() -> Result<(), eframe::Error> {
     let grid_path = PathBuf::from(args.nth(1).unwrap());
 
     let grid = SudokuGrid::from(grid_path.clone());
-    let mut solver = SudokuSolver::new(grid);
-    solver.add_solving_strategy(Box::new(SolveByX {}));
-    solver.add_solving_strategy(Box::new(SolveByY {}));
-
+    let solver = SudokuSolver::new(grid);
     eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(solver)))
 }
 
@@ -36,6 +33,8 @@ pub struct SudokuGrid {
 pub struct Field {
     value: Option<usize>,
     possibilities: Vec<usize>,
+    row: usize,
+    column: usize,
 }
 
 impl From<PathBuf> for SudokuGrid {
@@ -52,21 +51,23 @@ impl From<PathBuf> for SudokuGrid {
 
         let rows: Vec<Vec<Field>> = lines
             .iter()
-            .map(|line| {
+            .enumerate()
+            .map(|(row_idx, line)| {
                 let fields = line
                     .trim()
                     .split(' ')
-                    .map(|c| match c {
-                        "1" => Field::filled(1),
-                        "2" => Field::filled(2),
-                        "3" => Field::filled(3),
-                        "4" => Field::filled(4),
-                        "5" => Field::filled(5),
-                        "6" => Field::filled(6),
-                        "7" => Field::filled(7),
-                        "8" => Field::filled(8),
-                        "9" => Field::filled(9),
-                        _ => Field::empty(),
+                    .enumerate()
+                    .map(|(col_idx, c)| match c {
+                        "1" => Field::filled(1, row_idx, col_idx),
+                        "2" => Field::filled(2, row_idx, col_idx),
+                        "3" => Field::filled(3, row_idx, col_idx),
+                        "4" => Field::filled(4, row_idx, col_idx),
+                        "5" => Field::filled(5, row_idx, col_idx),
+                        "6" => Field::filled(6, row_idx, col_idx),
+                        "7" => Field::filled(7, row_idx, col_idx),
+                        "8" => Field::filled(8, row_idx, col_idx),
+                        "9" => Field::filled(9, row_idx, col_idx),
+                        _ => Field::empty(row_idx, col_idx),
                     })
                     .collect::<Vec<Field>>();
 
@@ -94,18 +95,13 @@ impl SudokuGrid {
         row.get_mut(col_idx)
     }
 
-    fn update_possibities_for_all_fields(&mut self) {
-        for row_idx in 0..9 {
-            for col_idx in 0..9 {
-                self.update_possibility_for_field_at(row_idx, col_idx);
-            }
-        }
-    }
-
     fn is_completed(&self) -> bool {
-        self.rows
-            .iter()
-            .all(|row| row.iter().all(|f| f.value.is_some()))
+        self.rows.iter().all(|row| {
+            let mut row_values = row.iter().filter_map(|f| f.value).collect::<Vec<usize>>();
+            row_values.sort();
+
+            row_values.eq(&vec![1, 2, 3, 4, 5, 6, 7, 8, 9])
+        })
     }
 
     fn get_fields_in_row(&self, row_idx: usize) -> Option<&Vec<Field>> {
@@ -130,8 +126,8 @@ impl SudokuGrid {
             .collect()
     }
 
-    fn get_box_id_for_row_and_column(row: usize, column: usize) -> Option<usize> {
-        match (row, column) {
+    fn get_box_id_for_field(field: &Field) -> Option<usize> {
+        match (field.row, field.column) {
             (0..=2, 0..=2) => Some(0),
             (0..=2, 3..=5) => Some(1),
             (0..=2, 6..=8) => Some(2),
@@ -195,131 +191,32 @@ impl SudokuGrid {
             .filter_map(|(row, col)| self.get_field(row, col).map(|field| (field, (row, col))))
             .collect()
     }
-
-    fn update_possibility_for_field_at(&mut self, row_idx: usize, col_idx: usize) {
-        if self.get_field_mut(row_idx, col_idx).is_none() {
-            return;
-        }
-
-        let row_field_values: Vec<usize> =
-            self.get_fields_in_row(row_idx).map_or(vec![], |fields| {
-                fields.iter().filter_map(|f| f.value).collect()
-            });
-
-        let column_field_values: Vec<usize> = self
-            .get_fields_in_column(col_idx)
-            .iter()
-            .filter_map(|f| f.value)
-            .collect();
-
-        let box_id = Self::get_box_id_for_row_and_column(row_idx, col_idx);
-
-        let box_values: Vec<usize> = match box_id {
-            None => vec![],
-            Some(id) => self
-                .get_fields_in_box(id)
-                .iter()
-                .filter_map(|f| f.value)
-                .collect(),
-        };
-
-        let mut values = [box_values, row_field_values, column_field_values]
-            .iter()
-            .flatten()
-            .copied()
-            .collect::<Vec<usize>>();
-
-        values.dedup();
-
-        let all_row_possibilities = if let Some(row_fields) = self.get_fields_in_row(row_idx) {
-            Self::count_possibilities_for_fields(row_fields.iter().collect())
-        } else {
-            [0; 10]
-        };
-
-        let all_column_possibilities =
-            Self::count_possibilities_for_fields(self.get_fields_in_column(col_idx));
-
-        let all_box_possibilities =
-            if let Some(box_id) = Self::get_box_id_for_row_and_column(row_idx, col_idx) {
-                Self::count_possibilities_for_fields(self.get_fields_in_box(box_id))
-            } else {
-                [0; 10]
-            };
-
-        if let Some(field) = self.get_field_mut(row_idx, col_idx) {
-            field.possibilities.retain(|p| !values.contains(p));
-            if field.possibilities.len() == 1 {
-                *field = Field::filled(*field.possibilities.first().unwrap());
-                return;
-            }
-
-            for possibility in field.possibilities.clone().iter() {
-                if let Some(p) = all_row_possibilities.get(*possibility) {
-                    if *p == 1 {
-                        *field = Field::filled(*possibility);
-                        println!("[row] {possibility} was never found, assuming {row_idx} / {col_idx} is the only place it can go");
-                    }
-                }
-                if let Some(p) = all_column_possibilities.get(*possibility) {
-                    if *p == 1 {
-                        *field = Field::filled(*possibility);
-                        println!("[column] {possibility} was never found, assuming {row_idx} / {col_idx} is the only place it can go");
-                    }
-                }
-                if let Some(p) = all_box_possibilities.get(*possibility) {
-                    if *p == 1 {
-                        *field = Field::filled(*possibility);
-                        println!("[box] {possibility} was never found, assuming {row_idx} / {col_idx} is the only place it can go");
-                    }
-                }
-            }
-        }
-    }
-
-    fn count_possibilities_for_fields(fields: Vec<&Field>) -> [usize; 10] {
-        let mut all_possibilities = [0; 10];
-
-        for field in fields.iter() {
-            for possibility in field.possibilities.iter() {
-                if let Some(p) = all_possibilities.get_mut(*possibility) {
-                    *p += 1;
-                }
-            }
-        }
-
-        all_possibilities
-    }
 }
 
 impl Field {
-    fn empty() -> Self {
+    fn empty(row: usize, column: usize) -> Self {
         Self {
             value: None,
             possibilities: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+            row,
+            column,
         }
     }
 
-    fn filled(value: usize) -> Self {
+    fn filled(value: usize, row: usize, column: usize) -> Self {
         Self {
             value: Some(value),
             possibilities: vec![],
+            row,
+            column,
         }
+    }
+
+    fn set_value(&mut self, value: usize) {
+        self.value = Some(value);
     }
 
     fn remove_possibility(&mut self, possibility: usize) {
         self.possibilities.retain(|p| *p != possibility)
-    }
-
-    fn without_possibility(&self, possibility: usize) -> Self {
-        Self {
-            value: None,
-            possibilities: self
-                .possibilities
-                .iter()
-                .filter(|p| **p != possibility)
-                .copied()
-                .collect(),
-        }
     }
 }
