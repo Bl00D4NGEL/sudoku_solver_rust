@@ -23,10 +23,6 @@ impl SudokuSolver {
         this
     }
 
-    pub fn grid(&self) -> &SudokuGrid {
-        &self.grid
-    }
-
     pub fn grid_mut(&mut self) -> &mut SudokuGrid {
         &mut self.grid
     }
@@ -52,15 +48,17 @@ impl SudokuSolver {
 
     pub fn solve(&mut self) {
         let mut solve_steps = vec![];
-        for row in self.grid.rows.iter() {
-            for field in row.iter() {
-                if field.value.is_some() {
-                    continue;
-                }
+        for field in self.grid.fields() {
+            if field.is_filled() {
+                continue;
+            }
 
-                for strategy in self.solving_strategies.iter() {
-                    if let Some(x) = strategy.solve_field(field, &self.grid) {
-                        solve_steps.push(((field.row, field.column), x.clone()));
+            for strategy in self.solving_strategies.iter() {
+                if let Some(x) = strategy.solve_field(field, &self.grid) {
+                    solve_steps.push(((field.row, field.column), x.clone()));
+
+                    if let SolveStep::SetValue(_) = x {
+                        break;
                     }
                 }
             }

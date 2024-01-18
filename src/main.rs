@@ -83,6 +83,10 @@ impl From<PathBuf> for SudokuGrid {
 }
 
 impl SudokuGrid {
+    fn fields(&self) -> Vec<&Field> {
+        self.rows.iter().flatten().collect()
+    }
+
     fn get_field(&self, row_idx: usize, col_idx: usize) -> Option<&Field> {
         let row = self.rows.get(row_idx)?;
 
@@ -210,6 +214,10 @@ impl Field {
             row,
             column,
         }
+    }
+
+    fn is_filled(&self) -> bool {
+        self.value.is_some()
     }
 
     fn set_value(&mut self, value: usize) {
