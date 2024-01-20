@@ -3,6 +3,7 @@ use crate::sudoku::{Field, SudokuGrid};
 pub struct SudokuSolver {
     grid: SudokuGrid,
     solving_strategies: Vec<Box<dyn SolvingStrategy>>,
+    solve_steps: Vec<((usize, usize), SolveStep)>,
 }
 
 impl SudokuSolver {
@@ -10,6 +11,7 @@ impl SudokuSolver {
         let mut this = Self {
             grid,
             solving_strategies: vec![],
+            solve_steps: vec![],
         };
 
         this.add_solving_strategy(Box::new(RemovePossibilitiesViaRowValues {}));
@@ -26,6 +28,10 @@ impl SudokuSolver {
         this
     }
 
+    pub fn solve_steps(&self) -> &Vec<((usize, usize), SolveStep)> {
+        &self.solve_steps
+    }
+
     pub fn grid(&mut self) -> &SudokuGrid {
         &self.grid
     }
@@ -40,6 +46,7 @@ impl SudokuSolver {
 
     pub fn apply_solve_steps(&mut self, solve_steps: Vec<((usize, usize), SolveStep)>) {
         for ((row, column), solve_step) in solve_steps {
+            self.solve_steps.push(((row, column), solve_step.clone()));
             if let Some(field) = self.grid.get_field_mut(row, column) {
                 match solve_step {
                     SolveStep::SetValue(value) => field.set_value(value),
@@ -57,11 +64,25 @@ impl SudokuSolver {
         let mut solve_steps = vec![];
         for field in self.grid.fields().iter().filter(|f| !f.is_filled()) {
             for strategy in self.solving_strategies.iter() {
-                if let Some(x) = strategy.solve_field(field, &self.grid) {
-                    solve_steps.push(((field.row(), field.column()), x.clone()));
-
-                    if let SolveStep::SetValue(_) = x {
+                match strategy.solve_field(field, &self.grid) {
+                    None => {}
+                    Some(SolveStep::SetValue(value)) => {
+                        solve_steps
+                            .push(((field.row(), field.column()), SolveStep::SetValue(value)));
                         break;
+                    }
+                    Some(SolveStep::RemovePossibilities(possibilities_to_remove)) => {
+                        let x = possibilities_to_remove
+                            .iter()
+                            .filter(|p| field.possibilities().contains(p))
+                            .copied()
+                            .collect::<Vec<usize>>();
+                        if !x.is_empty() {
+                            solve_steps.push((
+                                (field.row(), field.column()),
+                                SolveStep::RemovePossibilities(x),
+                            ));
+                        }
                     }
                 }
             }

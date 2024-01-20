@@ -190,10 +190,22 @@ impl Field {
         &self.possibilities
     }
 
+    pub fn set_value(&mut self, value: usize) {
+        self.value = Some(value)
+    }
+
+    pub fn remove_possibility(&mut self, possibility: usize) {
+        self.possibilities.retain(|p| *p != possibility)
+    }
+
+    pub fn is_filled(&self) -> bool {
+        self.value.is_some()
+    }
+
     pub fn empty(row: usize, column: usize) -> Self {
         Self {
-            value: None,
             possibilities: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+            value: None,
             row,
             column,
         }
@@ -206,17 +218,5 @@ impl Field {
             row,
             column,
         }
-    }
-
-    pub fn is_filled(&self) -> bool {
-        self.value.is_some()
-    }
-
-    pub fn set_value(&mut self, value: usize) {
-        self.value = Some(value);
-    }
-
-    pub fn remove_possibility(&mut self, possibility: usize) {
-        self.possibilities.retain(|p| *p != possibility)
     }
 }

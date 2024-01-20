@@ -8,16 +8,37 @@ use egui_extras::{Size, Strip, StripBuilder};
 
 impl App for SudokuSolver {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.grid().is_completed() {
-            egui::Window::new("You won!")
-                .resizable(false)
-                .show(ctx, |_| {});
-        }
+        self.solve();
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let changes = self.grid_mut().ui(ui);
-            self.apply_solve_steps(changes);
-            self.solve();
+            StripBuilder::new(ui)
+                .size(Size::relative(0.8))
+                .size(Size::relative(0.2))
+                .horizontal(|mut upper_strip| {
+                    upper_strip.cell(|ui| {
+                        let changes = self.grid_mut().ui(ui);
+                        self.apply_solve_steps(changes);
+                    });
+
+                    upper_strip.cell(|ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            if self.grid().is_completed() {
+                                ui.label("You won!");
+                            }
+                            for ((row, col), solve_step) in self.solve_steps().iter().rev() {
+                                ui.label(format!(
+                                    "{row} / {col} => {}",
+                                    match &solve_step {
+                                        SolveStep::SetValue(value) => format!("Set {value}"),
+                                        SolveStep::RemovePossibilities(p) => {
+                                            format!("Remove {p:?}")
+                                        }
+                                    },
+                                ));
+                            }
+                        });
+                    })
+                });
 
             ctx.request_repaint();
         });
@@ -27,23 +48,16 @@ impl App for SudokuSolver {
 impl SudokuGrid {
     fn ui(&mut self, ui: &mut egui::Ui) -> Vec<((usize, usize), SolveStep)> {
         let mut changes = vec![];
-        // self.update_possibities_for_all_fields();
-        StripBuilder::new(ui)
-            .size(Size::relative(1.0))
-            .vertical(|mut upper_strip| {
-                upper_strip.cell(|ui| {
-                    draw_grid(ui, 9, 9, |field_strip, row_idx, col_idx| {
-                        field_strip.cell(|ui| {
-                            if let Some(field) = self.get_field(row_idx, col_idx) {
-                                let p = field.ui(ui);
-                                if let Some(solve_step) = p {
-                                    changes.push(((field.row(), field.column()), solve_step));
-                                }
-                            }
-                        });
-                    });
-                });
+        draw_grid(ui, 9, 9, |field_strip, row_idx, col_idx| {
+            field_strip.cell(|ui| {
+                if let Some(field) = self.get_field(row_idx, col_idx) {
+                    let p = field.ui(ui);
+                    if let Some(solve_step) = p {
+                        changes.push(((field.row(), field.column()), solve_step));
+                    }
+                }
             });
+        });
 
         changes
     }
