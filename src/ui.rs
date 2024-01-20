@@ -1,6 +1,6 @@
 use crate::{
     solver::{SolveStep, SudokuSolver},
-    sudoku::{Field, SudokuGrid},
+    sudoku::{Field, FieldPosition, SudokuGrid},
 };
 use eframe::{egui, App};
 use egui::Color32;
@@ -8,7 +8,9 @@ use egui_extras::{Size, Strip, StripBuilder};
 
 impl App for SudokuSolver {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.solve();
+        if !self.grid().is_completed() {
+            self.solve();
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
@@ -25,9 +27,11 @@ impl App for SudokuSolver {
                             if self.grid().is_completed() {
                                 ui.label("You won!");
                             }
-                            for ((row, col), solve_step) in self.solve_steps().iter().rev() {
+                            for (position, solve_step) in self.solve_steps().iter().rev() {
                                 ui.label(format!(
-                                    "{row} / {col} => {}",
+                                    "{} / {} => {}",
+                                    position.row(),
+                                    position.column(),
                                     match &solve_step {
                                         SolveStep::SetValue(value) => format!("Set {value}"),
                                         SolveStep::RemovePossibilities(p) => {
@@ -46,14 +50,14 @@ impl App for SudokuSolver {
 }
 
 impl SudokuGrid {
-    fn ui(&mut self, ui: &mut egui::Ui) -> Vec<((usize, usize), SolveStep)> {
+    fn ui(&mut self, ui: &mut egui::Ui) -> Vec<(FieldPosition, SolveStep)> {
         let mut changes = vec![];
-        draw_grid(ui, 9, 9, |field_strip, row_idx, col_idx| {
+        draw_grid(ui, 9, 9, |field_strip, position| {
             field_strip.cell(|ui| {
-                if let Some(field) = self.get_field(row_idx, col_idx) {
+                if let Some(field) = self.get_field(position) {
                     let p = field.ui(ui);
                     if let Some(solve_step) = p {
-                        changes.push(((field.row(), field.column()), solve_step));
+                        changes.push((field.position().clone(), solve_step));
                     }
                 }
             });
@@ -86,17 +90,17 @@ impl Field {
                 if self.possibilities().is_empty() {
                     panic!(
                         "No field value nor possibilities exist for {} / {}",
-                        self.row(),
-                        self.column()
+                        self.position().row(),
+                        self.position().column()
                     );
                 }
 
                 ui.painter()
                     .rect_filled(ui.available_rect_before_wrap(), 0.0, color);
 
-                draw_grid(ui, 3, 3, |field_strip, row, col| {
+                draw_grid(ui, 3, 3, |field_strip, position| {
                     field_strip.cell(|ui| {
-                        let possibility = row * 3 + col + 1;
+                        let possibility = position.row() * 3 + position.column() + 1;
                         ui.centered_and_justified(|ui| {
                             if self.possibilities().contains(&possibility) {
                                 let response = ui.label(&possibility.to_string());
@@ -136,7 +140,7 @@ impl Field {
 
 fn draw_grid<F>(ui: &mut egui::Ui, row_count: usize, column_count: usize, mut field_fn: F)
 where
-    F: FnMut(&mut Strip, usize, usize),
+    F: FnMut(&mut Strip, FieldPosition),
 {
     StripBuilder::new(ui)
         .sizes(Size::remainder(), row_count)
@@ -147,7 +151,7 @@ where
                         .sizes(Size::remainder(), column_count)
                         .horizontal(|mut field_strip| {
                             for column in 0..column_count {
-                                field_fn(&mut field_strip, row, column);
+                                field_fn(&mut field_strip, FieldPosition::new(row, column));
                             }
                         });
                 });

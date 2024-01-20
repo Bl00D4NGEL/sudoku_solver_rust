@@ -9,8 +9,27 @@ pub struct SudokuGrid {
 pub struct Field {
     value: Option<usize>,
     possibilities: Vec<usize>,
+    position: FieldPosition,
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct FieldPosition {
     row: usize,
     column: usize,
+}
+
+impl FieldPosition {
+    pub fn new(row: usize, column: usize) -> Self {
+        Self { row, column }
+    }
+
+    pub fn row(&self) -> usize {
+        self.row
+    }
+
+    pub fn column(&self) -> usize {
+        self.column
+    }
 }
 
 impl From<PathBuf> for SudokuGrid {
@@ -33,17 +52,12 @@ impl From<PathBuf> for SudokuGrid {
                     .trim()
                     .split(' ')
                     .enumerate()
-                    .map(|(col_idx, c)| match c {
-                        "1" => Field::filled(1, row_idx, col_idx),
-                        "2" => Field::filled(2, row_idx, col_idx),
-                        "3" => Field::filled(3, row_idx, col_idx),
-                        "4" => Field::filled(4, row_idx, col_idx),
-                        "5" => Field::filled(5, row_idx, col_idx),
-                        "6" => Field::filled(6, row_idx, col_idx),
-                        "7" => Field::filled(7, row_idx, col_idx),
-                        "8" => Field::filled(8, row_idx, col_idx),
-                        "9" => Field::filled(9, row_idx, col_idx),
-                        _ => Field::empty(row_idx, col_idx),
+                    .map(|(col_idx, c)| match c.parse::<usize>() {
+                        Ok(value) => match value {
+                            1..=9 => Field::filled(value, FieldPosition::new(row_idx, col_idx)),
+                            _ => Field::empty(FieldPosition::new(row_idx, col_idx)),
+                        },
+                        _ => Field::empty(FieldPosition::new(row_idx, col_idx)),
                     })
                     .collect::<Vec<Field>>();
 
@@ -63,16 +77,16 @@ impl SudokuGrid {
         self.rows.iter().flatten().collect()
     }
 
-    pub fn get_field(&self, row_idx: usize, col_idx: usize) -> Option<&Field> {
-        let row = self.rows.get(row_idx)?;
+    pub fn get_field(&self, position: FieldPosition) -> Option<&Field> {
+        let row = self.rows.get(position.row)?;
 
-        row.get(col_idx)
+        row.get(position.column)
     }
 
-    pub fn get_field_mut(&mut self, row_idx: usize, col_idx: usize) -> Option<&mut Field> {
-        let row = self.rows.get_mut(row_idx)?;
+    pub fn get_field_mut(&mut self, position: &FieldPosition) -> Option<&mut Field> {
+        let row = self.rows.get_mut(position.row)?;
 
-        row.get_mut(col_idx)
+        row.get_mut(position.column)
     }
 
     pub fn is_completed(&self) -> bool {
@@ -107,7 +121,7 @@ impl SudokuGrid {
     }
 
     pub fn get_box_id_for_field(field: &Field) -> Option<usize> {
-        match (field.row, field.column) {
+        match (field.position.row, field.position.column) {
             (0..=2, 0..=2) => Some(0),
             (0..=2, 3..=5) => Some(1),
             (0..=2, 6..=8) => Some(2),
@@ -168,18 +182,17 @@ impl SudokuGrid {
 
         indexes
             .into_iter()
-            .filter_map(|(row, col)| self.get_field(row, col).map(|field| (field, (row, col))))
+            .filter_map(|(row, col)| {
+                self.get_field(FieldPosition::new(row, col))
+                    .map(|field| (field, (row, col)))
+            })
             .collect()
     }
 }
 
 impl Field {
-    pub fn row(&self) -> usize {
-        self.row
-    }
-
-    pub fn column(&self) -> usize {
-        self.column
+    pub fn position(&self) -> &FieldPosition {
+        &self.position
     }
 
     pub fn value(&self) -> Option<usize> {
@@ -202,21 +215,23 @@ impl Field {
         self.value.is_some()
     }
 
-    pub fn empty(row: usize, column: usize) -> Self {
+    pub fn is_empty(&self) -> bool {
+        self.value.is_none()
+    }
+
+    pub fn empty(position: FieldPosition) -> Self {
         Self {
             possibilities: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             value: None,
-            row,
-            column,
+            position,
         }
     }
 
-    pub fn filled(value: usize, row: usize, column: usize) -> Self {
+    pub fn filled(value: usize, position: FieldPosition) -> Self {
         Self {
             value: Some(value),
             possibilities: vec![],
-            row,
-            column,
+            position,
         }
     }
 }
