@@ -1,6 +1,6 @@
 use crate::{
     solver::{SolveStep, SudokuSolver},
-    Field, SudokuGrid,
+    sudoku::{Field, SudokuGrid},
 };
 use eframe::{egui, App};
 use egui::Color32;
@@ -37,7 +37,7 @@ impl SudokuGrid {
                             if let Some(field) = self.get_field(row_idx, col_idx) {
                                 let p = field.ui(ui);
                                 if let Some(solve_step) = p {
-                                    changes.push(((field.row, field.column), solve_step));
+                                    changes.push(((field.row(), field.column()), solve_step));
                                 }
                             }
                         });
@@ -61,18 +61,19 @@ impl Field {
 
         let mut solve_step: Option<SolveStep> = None;
 
-        match self.value {
+        match self.value() {
             None => {
-                let color = if self.possibilities.len() == 1 {
+                let color = if self.possibilities().len() == 1 {
                     faded_color(Color32::BLUE)
                 } else {
                     faded_color(Color32::RED)
                 };
 
-                if self.possibilities.is_empty() {
+                if self.possibilities().is_empty() {
                     panic!(
                         "No field value nor possibilities exist for {} / {}",
-                        self.row, self.column
+                        self.row(),
+                        self.column()
                     );
                 }
 
@@ -83,7 +84,7 @@ impl Field {
                     field_strip.cell(|ui| {
                         let possibility = row * 3 + col + 1;
                         ui.centered_and_justified(|ui| {
-                            if self.possibilities.contains(&possibility) {
+                            if self.possibilities().contains(&possibility) {
                                 let response = ui.label(&possibility.to_string());
 
                                 let response = response.interact(egui::Sense::click());
