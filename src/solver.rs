@@ -19,8 +19,15 @@ impl SudokuSolver {
         this.add_solving_strategy(Box::new(SetValueIfFieldIsOnlyOwnerOfPossibilityInRow {}));
         this.add_solving_strategy(Box::new(SetValueIfFieldIsOnlyOwnerOfPossibilityInColumn {}));
         this.add_solving_strategy(Box::new(SetValueIfFieldIsOnlyOwnerOfPossibilityInBox {}));
+        this.add_solving_strategy(Box::new(RemovePossibilitiesByPairsOfSizeNInRow {}));
+        this.add_solving_strategy(Box::new(RemovePossibilitiesByPairsOfSizeNInColummn {}));
+        this.add_solving_strategy(Box::new(RemovePossibilitiesByPairsOfSizeNInBox {}));
 
         this
+    }
+
+    pub fn grid(&mut self) -> &SudokuGrid {
+        &self.grid
     }
 
     pub fn grid_mut(&mut self) -> &mut SudokuGrid {
@@ -48,11 +55,7 @@ impl SudokuSolver {
 
     pub fn solve(&mut self) {
         let mut solve_steps = vec![];
-        for field in self.grid.fields() {
-            if field.is_filled() {
-                continue;
-            }
-
+        for field in self.grid.fields().iter().filter(|f| !f.is_filled()) {
             for strategy in self.solving_strategies.iter() {
                 if let Some(x) = strategy.solve_field(field, &self.grid) {
                     solve_steps.push(((field.row, field.column), x.clone()));
@@ -132,7 +135,6 @@ impl SolvingStrategy for SetValueIfOnlyOnePossibilityLeft {
                 "{value} is the only possible value for {} / {}",
                 field.row, field.column
             );
-            // return None;
             Some(SolveStep::SetValue(value))
         } else {
             None
@@ -211,5 +213,164 @@ impl SolvingStrategy for SetValueIfFieldIsOnlyOwnerOfPossibilityInBox {
         }
 
         None
+    }
+}
+
+pub struct RemovePossibilitiesByPairsOfSizeNInRow {}
+impl SolvingStrategy for RemovePossibilitiesByPairsOfSizeNInRow {
+    fn solve_field(&self, field: &Field, grid: &SudokuGrid) -> Option<SolveStep> {
+        let fields = grid.get_fields_in_row(field.row)?;
+
+        let fields_possibilities = fields
+            .iter()
+            .filter(|f| f.column != field.column)
+            .map(|field| field.possibilities.clone())
+            .collect::<Vec<Vec<usize>>>();
+
+        let possibilities_to_remove = find_grouped_possibilities(fields_possibilities);
+        if possibilities_to_remove.is_empty() {
+            None
+        } else {
+            Some(SolveStep::RemovePossibilities(possibilities_to_remove))
+        }
+    }
+}
+fn find_grouped_possibilities(fields_possibilities: Vec<Vec<usize>>) -> Vec<usize> {
+    let mut possibilties_to_remove = vec![];
+
+    let fields_possibilities = fields_possibilities
+        .into_iter()
+        .filter(|fp| fp.len() > 1)
+        .collect::<Vec<Vec<usize>>>();
+
+    for field_possibilities in fields_possibilities.iter() {
+        let len = field_possibilities.len();
+        let matches = fields_possibilities
+            .iter()
+            .filter(|possibilities| {
+                // more possibilities than the one we are looking for => ignore this field
+                if possibilities.len() > len {
+                    return false;
+                }
+
+                possibilities
+                    .iter()
+                    .all(|p| field_possibilities.contains(p))
+            })
+            .collect::<Vec<&Vec<usize>>>();
+
+        if matches.len() == len {
+            possibilties_to_remove.append(&mut field_possibilities.clone());
+        }
+    }
+
+    possibilties_to_remove.sort();
+    possibilties_to_remove.dedup();
+
+    possibilties_to_remove
+}
+
+pub struct RemovePossibilitiesByPairsOfSizeNInColummn {}
+impl SolvingStrategy for RemovePossibilitiesByPairsOfSizeNInColummn {
+    fn solve_field(&self, field: &Field, grid: &SudokuGrid) -> Option<SolveStep> {
+        let fields = grid.get_fields_in_column(field.column);
+
+        let fields_possibilities = fields
+            .iter()
+            .filter(|f| f.row != field.row)
+            .map(|field| field.possibilities.clone())
+            .collect::<Vec<Vec<usize>>>();
+
+        let possibilities_to_remove = find_grouped_possibilities(fields_possibilities);
+        if possibilities_to_remove.is_empty() {
+            None
+        } else {
+            Some(SolveStep::RemovePossibilities(possibilities_to_remove))
+        }
+    }
+}
+pub struct RemovePossibilitiesByPairsOfSizeNInBox {}
+impl SolvingStrategy for RemovePossibilitiesByPairsOfSizeNInBox {
+    fn solve_field(&self, field: &Field, grid: &SudokuGrid) -> Option<SolveStep> {
+        let box_id = SudokuGrid::get_box_id_for_field(field)?;
+        let fields = grid.get_fields_in_box(box_id);
+
+        let fields_possibilities = fields
+            .iter()
+            .filter(|f| f.column != field.column && f.row != field.row)
+            .map(|field| field.possibilities.clone())
+            .collect::<Vec<Vec<usize>>>();
+
+        let possibilities_to_remove = find_grouped_possibilities(fields_possibilities);
+        if possibilities_to_remove.is_empty() {
+            None
+        } else {
+            Some(SolveStep::RemovePossibilities(possibilities_to_remove))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works_for_pairs() {
+        let possibilities = vec![vec![1, 2], vec![1, 2], vec![2, 3], vec![1, 2, 4, 5]];
+        let result = vec![1, 2];
+
+        assert_eq!(result, super::find_grouped_possibilities(possibilities));
+    }
+
+    #[test]
+    fn it_works_for_triples() {
+        let possibilities = vec![
+            vec![1, 2, 3],
+            vec![1, 2, 3],
+            vec![1, 2, 3],
+            vec![1, 2, 4, 5],
+        ];
+        let result = vec![1, 2, 3];
+
+        assert_eq!(result, super::find_grouped_possibilities(possibilities));
+    }
+
+    #[test]
+    fn it_works_for_triples_with_missing_possibilities() {
+        let possibilities = vec![vec![1, 2, 3], vec![1, 3], vec![1, 2, 3], vec![1, 2, 4, 5]];
+        let result = vec![1, 2, 3];
+
+        assert_eq!(result, super::find_grouped_possibilities(possibilities));
+
+        let possibilities = vec![vec![1, 2, 3], vec![1, 3], vec![1, 2], vec![1, 2, 4, 5]];
+        let result = vec![1, 2, 3];
+
+        assert_eq!(result, super::find_grouped_possibilities(possibilities));
+
+        let possibilities = vec![
+            vec![1, 2, 3],
+            vec![1, 3],
+            vec![1, 2, 3],
+            vec![1, 2, 3, 4, 5],
+        ];
+        let result = vec![1, 2, 3];
+
+        assert_eq!(result, super::find_grouped_possibilities(possibilities));
+        let possibilities = vec![
+            vec![1, 2, 3],
+            vec![1, 3],
+            vec![1, 2, 3],
+            vec![1, 2, 3],
+            vec![1, 2, 3, 4, 5],
+        ];
+        let result = vec![1, 2, 3, 4, 5];
+
+        assert_eq!(result, super::find_grouped_possibilities(possibilities));
+        let possibilities = vec![vec![1, 5, 8], vec![1, 4, 5, 8], vec![], vec![]];
+        let result: Vec<usize> = vec![];
+
+        assert_eq!(result, super::find_grouped_possibilities(possibilities));
+        let possibilities = vec![vec![1, 5, 8], vec![1, 4, 5, 8], vec![2], vec![3]];
+        let result: Vec<usize> = vec![];
+
+        assert_eq!(result, super::find_grouped_possibilities(possibilities));
     }
 }

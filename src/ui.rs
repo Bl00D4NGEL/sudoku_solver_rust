@@ -8,10 +8,18 @@ use egui_extras::{Size, Strip, StripBuilder};
 
 impl App for SudokuSolver {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.grid().is_completed() {
+            egui::Window::new("You won!")
+                .resizable(false)
+                .show(ctx, |_| {});
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             let changes = self.grid_mut().ui(ui);
             self.apply_solve_steps(changes);
             self.solve();
+
+            ctx.request_repaint();
         });
     }
 }
@@ -20,18 +28,10 @@ impl SudokuGrid {
     fn ui(&mut self, ui: &mut egui::Ui) -> Vec<((usize, usize), SolveStep)> {
         let mut changes = vec![];
         // self.update_possibities_for_all_fields();
-
         StripBuilder::new(ui)
             .size(Size::relative(1.0))
             .vertical(|mut upper_strip| {
                 upper_strip.cell(|ui| {
-                    if self.is_completed() {
-                        ui.centered_and_justified(|ui| {
-                            ui.heading("You won!");
-                        });
-                        return;
-                    }
-
                     self.draw_grid(ui, 9, 9, |field_strip, row_idx, col_idx| {
                         field_strip.cell(|ui| {
                             if let Some(field) = self.get_field(row_idx, col_idx) {
@@ -68,6 +68,13 @@ impl SudokuGrid {
                 } else {
                     faded_color(Color32::RED)
                 };
+
+                if field.possibilities.is_empty() {
+                    panic!(
+                        "No field value nor possibilities exist for {} / {}",
+                        field.row, field.column
+                    );
+                }
                 ui.painter()
                     .rect_filled(ui.available_rect_before_wrap(), 0.0, color);
 
