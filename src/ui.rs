@@ -129,7 +129,7 @@ impl Field {
                 );
 
                 ui.centered_and_justified(|ui| {
-                    ui.label(format!("{}", value));
+                    ui.heading(format!("{}", value));
                 });
             }
         }
