@@ -72,6 +72,170 @@ impl From<PathBuf> for SudokuGrid {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Grid {
+    fields: [Field; 81],
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct RowId(usize);
+impl RowId {
+    pub fn new(index: usize) -> Option<Self> {
+        if index <= 9 {
+            Some(Self(index))
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct ColumnId(usize);
+impl ColumnId {
+    pub fn new(index: usize) -> Option<Self> {
+        if index <= 9 {
+            Some(Self(index))
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct BoxId(usize);
+impl BoxId {
+    pub fn new(row: RowId, column: ColumnId) -> Option<Self> {
+        match (row.0, column.0) {
+            (0..=2, 0..=2) => Some(Self(0)),
+            (0..=2, 3..=5) => Some(Self(1)),
+            (0..=2, 6..=8) => Some(Self(2)),
+            (3..=5, 0..=2) => Some(Self(3)),
+            (3..=5, 3..=5) => Some(Self(4)),
+            (3..=5, 6..=8) => Some(Self(5)),
+            (6..=8, 0..=2) => Some(Self(6)),
+            (6..=8, 3..=5) => Some(Self(7)),
+            (6..=8, 6..=8) => Some(Self(8)),
+            _ => None,
+        }
+    }
+
+    pub fn get_positions(&self) -> Vec<Position> {
+        let positions = match self.0 {
+            0..=2 => vec![
+                (0, self.0 * 3),
+                (0, self.0 * 3 + 1),
+                (0, self.0 * 3 + 2),
+                (1, self.0 * 3),
+                (1, self.0 * 3 + 1),
+                (1, self.0 * 3 + 2),
+                (2, self.0 * 3),
+                (2, self.0 * 3 + 1),
+                (2, self.0 * 3 + 2),
+            ],
+            3..=5 => vec![
+                (3, (self.0 % 3) * 3),
+                (3, (self.0 % 3) * 3 + 1),
+                (3, (self.0 % 3) * 3 + 2),
+                (4, (self.0 % 3) * 3),
+                (4, (self.0 % 3) * 3 + 1),
+                (4, (self.0 % 3) * 3 + 2),
+                (5, (self.0 % 3) * 3),
+                (5, (self.0 % 3) * 3 + 1),
+                (5, (self.0 % 3) * 3 + 2),
+            ],
+            6..=8 => vec![
+                (6, (self.0 % 3) * 3),
+                (6, (self.0 % 3) * 3 + 1),
+                (6, (self.0 % 3) * 3 + 2),
+                (7, (self.0 % 3) * 3),
+                (7, (self.0 % 3) * 3 + 1),
+                (7, (self.0 % 3) * 3 + 2),
+                (8, (self.0 % 3) * 3),
+                (8, (self.0 % 3) * 3 + 1),
+                (8, (self.0 % 3) * 3 + 2),
+            ],
+            _ => panic!("Box id must be between 0 and 8"),
+        };
+
+        positions
+            .iter()
+            .filter_map(|(row, col)| Some(Position::new(RowId::new(*row)?, ColumnId::new(*col)?)))
+            .collect()
+    }
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct Position {
+    row: RowId,
+    column: ColumnId,
+}
+
+impl Position {
+    pub fn new(row: RowId, column: ColumnId) -> Self {
+        Self { row, column }
+    }
+
+    pub fn row(&self) -> &RowId {
+        &self.row
+    }
+
+    pub fn column(&self) -> &ColumnId {
+        &self.column
+    }
+}
+
+impl Grid {
+    pub fn fields(&self) -> &[Field; 81] {
+        &self.fields
+    }
+
+    pub fn get_field(&self, position: &Position) -> Option<&Field> {
+        self.fields.get(position.row.0 * 9 + position.column.0)
+    }
+
+    pub fn get_field_mut(&mut self, position: &Position) -> Option<&mut Field> {
+        self.fields.get_mut(position.row.0 * 9 + position.column.0)
+    }
+
+    pub fn get_fields_in_row(&self, row_id: RowId) -> Vec<&Field> {
+        let first_field_index = 9 * row_id.0;
+        let last_field_index = 9 * row_id.0 + 8;
+        self.fields
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, field)| {
+                if idx >= first_field_index && idx <= last_field_index {
+                    Some(field)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    pub fn get_fields_in_column(&self, column_id: ColumnId) -> Vec<&Field> {
+        self.fields
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, field)| {
+                if idx % 9 == column_id.0 {
+                    Some(field)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    pub fn get_fields_in_box(&self, box_id: BoxId) -> Vec<&Field> {
+        box_id
+            .get_positions()
+            .iter()
+            .filter_map(|pos| self.get_field(pos))
+            .collect()
+    }
+}
+
 impl SudokuGrid {
     pub fn fields(&self) -> Vec<&Field> {
         self.rows.iter().flatten().collect()
