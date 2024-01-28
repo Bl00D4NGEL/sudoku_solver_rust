@@ -1,111 +1,11 @@
-use crate::sudoku::{Field, FieldPosition, SudokuGrid};
+use crate::sudoku::{Field, SudokuGrid};
 
-type SolveFn = dyn Fn(&Field, &SudokuGrid) -> Option<SolveStep>;
+use super::SolveStep;
 
-pub struct SudokuSolver {
-    grid: SudokuGrid,
-    solving_strategies: Vec<Box<SolveFn>>,
-    solve_steps: Vec<(FieldPosition, SolveStep)>,
-}
-
-impl SudokuSolver {
-    pub fn new(grid: SudokuGrid) -> Self {
-        let mut this = Self {
-            grid,
-            solving_strategies: vec![],
-            solve_steps: vec![],
-        };
-
-        this.add_solving_strategy(Box::new(remove_possibilities_by_row_values));
-        this.add_solving_strategy(Box::new(remove_possibilities_by_column_values));
-        this.add_solving_strategy(Box::new(remove_possibilities_via_box_values));
-        this.add_solving_strategy(Box::new(set_value_if_only_one_possibility_left));
-        this.add_solving_strategy(Box::new(
-            set_value_if_field_is_only_owner_of_possibility_in_row,
-        ));
-        this.add_solving_strategy(Box::new(
-            set_value_if_field_is_only_owner_of_possibility_in_column,
-        ));
-        this.add_solving_strategy(Box::new(
-            set_value_if_field_is_only_owner_of_possibility_in_box,
-        ));
-        this.add_solving_strategy(Box::new(remove_possibilities_by_pairs_of_size_nin_row));
-        this.add_solving_strategy(Box::new(remove_possibilities_by_pairs_of_size_nin_colummn));
-        this.add_solving_strategy(Box::new(remove_possibilities_by_pairs_of_size_nin_box));
-
-        this
-    }
-
-    pub fn solve_steps(&self) -> &Vec<(FieldPosition, SolveStep)> {
-        &self.solve_steps
-    }
-
-    pub fn grid(&mut self) -> &SudokuGrid {
-        &self.grid
-    }
-
-    pub fn grid_mut(&mut self) -> &mut SudokuGrid {
-        &mut self.grid
-    }
-
-    pub fn add_solving_strategy(&mut self, strategy: Box<SolveFn>) {
-        self.solving_strategies.push(strategy);
-    }
-
-    pub fn apply_solve_steps(&mut self, solve_steps: Vec<(FieldPosition, SolveStep)>) {
-        for (position, solve_step) in solve_steps {
-            if let Some(field) = self.grid.get_field_mut(&position) {
-                match &solve_step {
-                    SolveStep::SetValue(value) => field.set_value(*value),
-                    SolveStep::RemovePossibilities(possibilities) => {
-                        for possibiliy in possibilities {
-                            field.remove_possibility(*possibiliy);
-                        }
-                    }
-                }
-            }
-            self.solve_steps.push((position, solve_step.clone()));
-        }
-    }
-
-    pub fn solve(&mut self) {
-        let mut solve_steps = vec![];
-        for field in self.grid.fields().iter().filter(|f| !f.is_filled()) {
-            for strategy in self.solving_strategies.iter() {
-                match strategy(field, &self.grid) {
-                    None => {}
-                    Some(SolveStep::SetValue(value)) => {
-                        solve_steps.push((field.position().clone(), SolveStep::SetValue(value)));
-                        break;
-                    }
-                    Some(SolveStep::RemovePossibilities(possibilities_to_remove)) => {
-                        let x = possibilities_to_remove
-                            .iter()
-                            .filter(|p| field.possibilities().contains(p))
-                            .copied()
-                            .collect::<Vec<usize>>();
-                        if !x.is_empty() {
-                            solve_steps.push((
-                                field.position().clone(),
-                                SolveStep::RemovePossibilities(x),
-                            ));
-                        }
-                    }
-                }
-            }
-        }
-
-        self.apply_solve_steps(solve_steps);
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum SolveStep {
-    SetValue(usize),
-    RemovePossibilities(Vec<usize>),
-}
-
-fn remove_possibilities_by_row_values(field: &Field, grid: &SudokuGrid) -> Option<SolveStep> {
+pub(crate) fn remove_possibilities_by_row_values(
+    field: &Field,
+    grid: &SudokuGrid,
+) -> Option<SolveStep> {
     let mut values: Vec<usize> = grid
         .get_fields_in_row(field.position().row())
         .map_or(vec![], |fields| {
@@ -117,7 +17,10 @@ fn remove_possibilities_by_row_values(field: &Field, grid: &SudokuGrid) -> Optio
     Some(SolveStep::RemovePossibilities(values))
 }
 
-fn remove_possibilities_by_column_values(field: &Field, grid: &SudokuGrid) -> Option<SolveStep> {
+pub(crate) fn remove_possibilities_by_column_values(
+    field: &Field,
+    grid: &SudokuGrid,
+) -> Option<SolveStep> {
     let mut values: Vec<usize> = grid
         .get_fields_in_column(field.position().column())
         .iter()
@@ -129,7 +32,10 @@ fn remove_possibilities_by_column_values(field: &Field, grid: &SudokuGrid) -> Op
     Some(SolveStep::RemovePossibilities(values))
 }
 
-fn remove_possibilities_via_box_values(field: &Field, grid: &SudokuGrid) -> Option<SolveStep> {
+pub(crate) fn remove_possibilities_via_box_values(
+    field: &Field,
+    grid: &SudokuGrid,
+) -> Option<SolveStep> {
     let box_id = SudokuGrid::get_box_id_for_field(field)?;
 
     let mut values: Vec<usize> = grid
@@ -143,7 +49,10 @@ fn remove_possibilities_via_box_values(field: &Field, grid: &SudokuGrid) -> Opti
     Some(SolveStep::RemovePossibilities(values))
 }
 
-fn set_value_if_only_one_possibility_left(field: &Field, _: &SudokuGrid) -> Option<SolveStep> {
+pub(crate) fn set_value_if_only_one_possibility_left(
+    field: &Field,
+    _: &SudokuGrid,
+) -> Option<SolveStep> {
     if field.possibilities().len() == 1 {
         let value = field.possibilities().first()?.to_owned();
         println!(
@@ -157,7 +66,7 @@ fn set_value_if_only_one_possibility_left(field: &Field, _: &SudokuGrid) -> Opti
     }
 }
 
-fn count_possibilities_for_fields(fields: Vec<&Field>) -> [usize; 10] {
+pub(crate) fn count_possibilities_for_fields(fields: Vec<&Field>) -> [usize; 10] {
     let mut all_possibilities = [0; 10];
 
     for field in fields.iter() {
@@ -171,7 +80,7 @@ fn count_possibilities_for_fields(fields: Vec<&Field>) -> [usize; 10] {
     all_possibilities
 }
 
-fn set_value_if_field_is_only_owner_of_possibility_in_row(
+pub(crate) fn set_value_if_field_is_only_owner_of_possibility_in_row(
     field: &Field,
     grid: &SudokuGrid,
 ) -> Option<SolveStep> {
@@ -191,7 +100,7 @@ fn set_value_if_field_is_only_owner_of_possibility_in_row(
     None
 }
 
-fn set_value_if_field_is_only_owner_of_possibility_in_column(
+pub(crate) fn set_value_if_field_is_only_owner_of_possibility_in_column(
     field: &Field,
     grid: &SudokuGrid,
 ) -> Option<SolveStep> {
@@ -211,7 +120,7 @@ fn set_value_if_field_is_only_owner_of_possibility_in_column(
     None
 }
 
-fn set_value_if_field_is_only_owner_of_possibility_in_box(
+pub(crate) fn set_value_if_field_is_only_owner_of_possibility_in_box(
     field: &Field,
     grid: &SudokuGrid,
 ) -> Option<SolveStep> {
@@ -231,7 +140,7 @@ fn set_value_if_field_is_only_owner_of_possibility_in_box(
     None
 }
 
-fn remove_possibilities_by_pairs_of_size_nin_row(
+pub(crate) fn remove_possibilities_by_pairs_of_size_nin_row(
     field: &Field,
     grid: &SudokuGrid,
 ) -> Option<SolveStep> {
@@ -286,7 +195,7 @@ fn find_grouped_possibilities(fields_possibilities: Vec<Vec<usize>>) -> Vec<usiz
     possibilties_to_remove
 }
 
-fn remove_possibilities_by_pairs_of_size_nin_colummn(
+pub(crate) fn remove_possibilities_by_pairs_of_size_nin_colummn(
     field: &Field,
     grid: &SudokuGrid,
 ) -> Option<SolveStep> {
@@ -305,7 +214,7 @@ fn remove_possibilities_by_pairs_of_size_nin_colummn(
         Some(SolveStep::RemovePossibilities(possibilities_to_remove))
     }
 }
-fn remove_possibilities_by_pairs_of_size_nin_box(
+pub(crate) fn remove_possibilities_by_pairs_of_size_nin_box(
     field: &Field,
     grid: &SudokuGrid,
 ) -> Option<SolveStep> {

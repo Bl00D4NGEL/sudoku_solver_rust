@@ -77,6 +77,10 @@ impl SudokuGrid {
         self.rows.iter().flatten().collect()
     }
 
+    pub fn rows(&self) -> &Vec<Vec<Field>> {
+        &self.rows
+    }
+
     pub fn get_field(&self, position: FieldPosition) -> Option<&Field> {
         let row = self.rows.get(position.row)?;
 

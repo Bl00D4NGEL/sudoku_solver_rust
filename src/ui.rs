@@ -1,3 +1,5 @@
+use std::env::current_dir;
+
 use crate::{
     solver::{SolveStep, SudokuSolver},
     sudoku::{Field, FieldPosition, SudokuGrid},
@@ -24,6 +26,14 @@ impl App for SudokuSolver {
 
                     upper_strip.cell(|ui| {
                         egui::ScrollArea::vertical().show(ui, |ui| {
+                            if ui.button("Export").clicked() {
+                                if let Ok(cwd) = current_dir() {
+                                    let fd = rfd::FileDialog::new();
+                                    if let Some(path) = fd.set_directory(cwd).pick_file() {
+                                        self.export_to(&path);
+                                    }
+                                }
+                            }
                             if self.grid().is_completed() {
                                 ui.label("You won!");
                             }
