@@ -11,7 +11,7 @@ use egui_extras::{Size, Strip, StripBuilder};
 impl App for SudokuSolver {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if let Some(grid) = self.grid() {
-            if grid.is_completed() {
+            if !grid.is_completed() {
                 self.solve();
             }
         }
