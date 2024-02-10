@@ -20,7 +20,7 @@ impl App for SudokuSolver {
                 .size(Size::relative(0.2))
                 .horizontal(|mut upper_strip| {
                     upper_strip.cell(|ui| {
-                        let changes = self.grid_mut().ui(ui);
+                        let changes = self.grid().ui(ui);
                         self.apply_solve_steps(changes);
                     });
 
@@ -34,9 +34,24 @@ impl App for SudokuSolver {
                                     }
                                 }
                             }
+
+                            if ui.button("Import").clicked() {
+                                if let Ok(cwd) = current_dir() {
+                                    let fd = rfd::FileDialog::new();
+                                    if let Some(path) = fd.set_directory(cwd).pick_file() {
+                                        self.solve_steps_mut().clear();
+                                        let result = self.import_from(&path);
+                                        if result.is_err() {
+                                            ui.label("That didn't work");
+                                        }
+                                    }
+                                }
+                            }
+
                             if self.grid().is_completed() {
                                 ui.label("You won!");
                             }
+
                             for (position, solve_step) in self.solve_steps().iter().rev() {
                                 ui.label(format!(
                                     "{} / {} => {}",
@@ -60,7 +75,7 @@ impl App for SudokuSolver {
 }
 
 impl SudokuGrid {
-    fn ui(&mut self, ui: &mut egui::Ui) -> Vec<(FieldPosition, SolveStep)> {
+    fn ui(&self, ui: &mut egui::Ui) -> Vec<(FieldPosition, SolveStep)> {
         let mut changes = vec![];
         draw_grid(ui, 9, 9, |field_strip, position| {
             field_strip.cell(|ui| {

@@ -32,8 +32,10 @@ impl FieldPosition {
     }
 }
 
-impl From<PathBuf> for SudokuGrid {
-    fn from(value: PathBuf) -> Self {
+impl TryFrom<PathBuf> for SudokuGrid {
+    type Error = String;
+
+    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let contents = &fs::read_to_string(value).unwrap();
         let lines = contents
             .lines()
@@ -41,7 +43,9 @@ impl From<PathBuf> for SudokuGrid {
             .collect::<Vec<&str>>();
 
         if lines.len() != 9 {
-            panic!("File has more than 9 lines, can not create valid sudoku");
+            return Err(String::from(
+                "File has more than 9 lines, can not create valid sudoku",
+            ));
         }
 
         let rows: Vec<Vec<Field>> = lines
@@ -68,7 +72,8 @@ impl From<PathBuf> for SudokuGrid {
                 fields
             })
             .collect();
-        SudokuGrid { rows }
+
+        Ok(SudokuGrid { rows })
     }
 }
 

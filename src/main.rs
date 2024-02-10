@@ -24,7 +24,8 @@ fn main() -> Result<(), eframe::Error> {
 
     let grid_path = PathBuf::from(args.nth(1).unwrap());
 
-    let grid = SudokuGrid::from(grid_path.clone());
-    let solver = SudokuSolver::new(grid);
+    let grid = SudokuGrid::try_from(grid_path.clone());
+
+    let solver = SudokuSolver::new(grid.expect("Valid suduko grid passed as cli arg"));
     eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(solver)))
 }
