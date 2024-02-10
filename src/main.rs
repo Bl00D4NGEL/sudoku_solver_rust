@@ -22,10 +22,11 @@ fn main() -> Result<(), eframe::Error> {
 
     let mut args = env::args();
 
-    let grid_path = PathBuf::from(args.nth(1).unwrap());
+    let grid = match args.nth(1) {
+        None => None,
+        Some(path) => SudokuGrid::try_from(PathBuf::from(path)).ok(),
+    };
 
-    let grid = SudokuGrid::try_from(grid_path.clone());
-
-    let solver = SudokuSolver::new(grid.expect("Valid suduko grid passed as cli arg"));
+    let solver = SudokuSolver::new(grid);
     eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(solver)))
 }

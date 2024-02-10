@@ -224,10 +224,6 @@ impl Field {
         self.value.is_some()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.value.is_none()
-    }
-
     pub fn empty(position: FieldPosition) -> Self {
         Self {
             possibilities: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],

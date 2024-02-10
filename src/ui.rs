@@ -10,8 +10,10 @@ use egui_extras::{Size, Strip, StripBuilder};
 
 impl App for SudokuSolver {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if !self.grid().is_completed() {
-            self.solve();
+        if let Some(grid) = self.grid() {
+            if grid.is_completed() {
+                self.solve();
+            }
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -19,9 +21,12 @@ impl App for SudokuSolver {
                 .size(Size::relative(0.8))
                 .size(Size::relative(0.2))
                 .horizontal(|mut upper_strip| {
-                    upper_strip.cell(|ui| {
-                        let changes = self.grid().ui(ui);
-                        self.apply_solve_steps(changes);
+                    upper_strip.cell(|ui| match self.grid() {
+                        None => (),
+                        Some(grid) => {
+                            let changes = grid.ui(ui);
+                            self.apply_solve_steps(changes);
+                        }
                     });
 
                     upper_strip.cell(|ui| {
@@ -48,8 +53,10 @@ impl App for SudokuSolver {
                                 }
                             }
 
-                            if self.grid().is_completed() {
-                                ui.label("You won!");
+                            if let Some(grid) = self.grid() {
+                                if grid.is_completed() {
+                                    ui.label("You won!");
+                                }
                             }
 
                             for (position, solve_step) in self.solve_steps().iter().rev() {
