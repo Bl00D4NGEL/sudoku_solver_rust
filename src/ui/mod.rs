@@ -8,6 +8,9 @@ use eframe::{egui, App};
 use egui::Color32;
 use egui_extras::{Size, Strip, StripBuilder};
 
+mod export;
+mod import;
+
 pub struct SudokuUi {
     auto_solve: bool,
     solver: SudokuSolver,
@@ -16,6 +19,14 @@ pub struct SudokuUi {
 impl SudokuUi {
     pub fn new(auto_solve: bool, solver: SudokuSolver) -> Self {
         Self { auto_solve, solver }
+    }
+
+    pub fn solver(&self) -> &SudokuSolver {
+        &self.solver
+    }
+
+    pub fn solver_mut(&mut self) -> &mut SudokuSolver {
+        &mut self.solver
     }
 }
 
@@ -30,8 +41,8 @@ impl App for SudokuUi {
         }
         egui::CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
-                .size(Size::relative(0.1))
-                .size(Size::relative(0.9))
+                .size(Size::at_most(Size::initial(20.0), 200.0))
+                .size(Size::remainder())
                 .vertical(|mut vertical_strip| {
                     vertical_strip.cell(|ui| {
                         ui.menu_button("Menu", |menu_ui| {
@@ -39,7 +50,7 @@ impl App for SudokuUi {
                                 if let Ok(cwd) = current_dir() {
                                     let fd = rfd::FileDialog::new();
                                     if let Some(path) = fd.set_directory(cwd).pick_file() {
-                                        self.solver.export_to(&path);
+                                        self.export_to(&path);
                                     }
                                 }
                             }
@@ -49,7 +60,7 @@ impl App for SudokuUi {
                                     let fd = rfd::FileDialog::new();
                                     if let Some(path) = fd.set_directory(cwd).pick_file() {
                                         self.solver.solve_steps_mut().clear();
-                                        let result = self.solver.import_from(&path);
+                                        let result = self.import_from(&path);
                                         if result.is_err() {
                                             menu_ui.label("That didn't work");
                                         }

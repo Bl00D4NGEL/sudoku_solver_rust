@@ -1,7 +1,5 @@
 use crate::sudoku::{Field, FieldPosition, SudokuGrid};
 
-mod export;
-mod import;
 mod strategies;
 
 type SolveFn = dyn Fn(&Field, &SudokuGrid) -> Option<SolveStep>;
@@ -54,8 +52,12 @@ impl SudokuSolver {
         &mut self.solve_steps
     }
 
-    pub fn grid(&mut self) -> &Option<SudokuGrid> {
+    pub fn grid(&self) -> &Option<SudokuGrid> {
         &self.grid
+    }
+
+    pub fn set_grid(&mut self, new_grid: Option<SudokuGrid>) {
+        self.grid = new_grid;
     }
 
     pub fn add_solving_strategy(&mut self, strategy: Box<SolveFn>) {

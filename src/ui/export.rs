@@ -1,10 +1,9 @@
+use crate::ui::SudokuUi;
 use std::{fs, path::PathBuf};
 
-use super::SudokuSolver;
-
-impl SudokuSolver {
+impl SudokuUi {
     pub fn export_to(&self, target: &PathBuf) {
-        if let Some(grid) = &self.grid {
+        if let Some(grid) = self.solver().grid() {
             let export = grid
                 .rows()
                 .iter()
