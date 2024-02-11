@@ -44,8 +44,8 @@ impl App for SudokuUi {
                 .size(Size::at_most(Size::initial(20.0), 200.0))
                 .size(Size::remainder())
                 .vertical(|mut vertical_strip| {
-                    vertical_strip.cell(|ui| {
-                        ui.menu_button("Menu", |menu_ui| {
+                    vertical_strip.cell(|menu_ui| {
+                        menu_ui.horizontal(|menu_ui| {
                             if menu_ui.button("Export").clicked() {
                                 if let Ok(cwd) = current_dir() {
                                     let fd = rfd::FileDialog::new();
