@@ -1,9 +1,8 @@
 use std::env::current_dir;
 
-use crate::{
-    solver::{SolveStep, SudokuSolver},
-    sudoku::{Field, FieldPosition, SudokuGrid},
-};
+use crate::solver::{SolveStep, SudokuSolver};
+use crate::sudoku::field::{Field, FieldPosition};
+use crate::sudoku::grid::SudokuGrid;
 use eframe::{egui, App};
 use egui::Color32;
 use egui_extras::{Size, Strip, StripBuilder};
@@ -14,31 +13,52 @@ mod import;
 pub struct SudokuUi {
     auto_solve: bool,
     solver: SudokuSolver,
+    grid: Option<SudokuGrid>,
+    solve_steps: Vec<(FieldPosition, SolveStep)>,
 }
 
 impl SudokuUi {
-    pub fn new(auto_solve: bool, solver: SudokuSolver) -> Self {
-        Self { auto_solve, solver }
+    pub fn new(grid: Option<SudokuGrid>) -> Self {
+        Self {
+            auto_solve: false,
+            solver: SudokuSolver::new(),
+            grid,
+            solve_steps: vec![],
+        }
     }
 
-    pub fn solver(&self) -> &SudokuSolver {
-        &self.solver
+    pub fn grid(&self) -> Option<&SudokuGrid> {
+        self.grid.as_ref()
     }
 
-    pub fn solver_mut(&mut self) -> &mut SudokuSolver {
-        &mut self.solver
+    pub fn grid_mut(&mut self) -> &mut Option<SudokuGrid> {
+        &mut self.grid
+    }
+
+    pub fn add_solve_steps(&mut self, solve_steps: &Vec<(FieldPosition, SolveStep)>) {
+        for (position, solve_step) in solve_steps {
+            self.solve_steps
+                .push((position.clone(), solve_step.clone()));
+        }
     }
 }
 
 impl App for SudokuUi {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.auto_solve {
-            if let Some(grid) = self.solver.grid() {
+            if let Some(grid) = self.grid() {
                 if !grid.is_completed() {
-                    self.solver.solve();
+                    let solve_steps = self.solver.determine_solve_steps(grid);
+
+                    if let Some(mut_grid) = self.grid_mut() {
+                        mut_grid.apply_solve_steps(&solve_steps);
+
+                        self.add_solve_steps(&solve_steps);
+                    }
                 }
             }
         }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::at_most(Size::initial(20.0), 200.0))
@@ -59,7 +79,7 @@ impl App for SudokuUi {
                                 if let Ok(cwd) = current_dir() {
                                     let fd = rfd::FileDialog::new();
                                     if let Some(path) = fd.set_directory(cwd).pick_file() {
-                                        self.solver.solve_steps_mut().clear();
+                                        self.solve_steps.clear();
                                         let result = self.import_from(&path);
                                         if result.is_err() {
                                             menu_ui.label("That didn't work");
@@ -77,24 +97,31 @@ impl App for SudokuUi {
                             .size(Size::relative(0.8))
                             .size(Size::relative(0.2))
                             .horizontal(|mut horizontal_strip| {
-                                horizontal_strip.cell(|ui| match self.solver.grid() {
-                                    None => (),
-                                    Some(grid) => {
-                                        let changes = grid.ui(ui);
-                                        self.solver.apply_solve_steps(changes);
+                                horizontal_strip.cell(|ui| {
+                                    let mut changes = vec![];
+                                    match self.grid_mut() {
+                                        None => (),
+                                        Some(grid) => {
+                                            changes = grid.ui(ui);
+                                        }
+                                    }
+
+                                    if let Some(grid) = self.grid_mut() {
+                                        grid.apply_solve_steps(&changes);
+
+                                        self.add_solve_steps(&changes);
                                     }
                                 });
 
                                 horizontal_strip.cell(|h_ui| {
                                     egui::ScrollArea::vertical().show(h_ui, |scroll_ui| {
-                                        if let Some(grid) = self.solver.grid() {
+                                        if let Some(grid) = self.grid() {
                                             if grid.is_completed() {
                                                 scroll_ui.label("You won!");
                                             }
                                         }
 
-                                        for (position, solve_step) in
-                                            self.solver.solve_steps().iter().rev()
+                                        for (position, solve_step) in self.solve_steps.iter().rev()
                                         {
                                             scroll_ui.label(format!(
                                                 "{} / {} => {}",

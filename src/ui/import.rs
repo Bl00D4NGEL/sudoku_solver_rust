@@ -1,11 +1,10 @@
-use crate::sudoku::SudokuGrid;
+use crate::sudoku::grid::SudokuGrid;
 use crate::ui::SudokuUi;
 use std::path::Path;
 
 impl SudokuUi {
     pub fn import_from(&mut self, target: &Path) -> Result<(), String> {
-        self.solver_mut()
-            .set_grid(Some(SudokuGrid::try_from(target.to_path_buf())?));
+        *self.grid_mut() = Some(SudokuGrid::try_from(target.to_path_buf())?);
 
         Ok(())
     }

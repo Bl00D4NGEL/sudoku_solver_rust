@@ -6,8 +6,7 @@ use std::{
 };
 
 use eframe::egui;
-use solver::SudokuSolver;
-use sudoku::SudokuGrid;
+use sudoku::grid::SudokuGrid;
 use ui::SudokuUi;
 
 mod solver;
@@ -28,7 +27,6 @@ fn main() -> Result<(), eframe::Error> {
         Some(path) => SudokuGrid::try_from(PathBuf::from(path)).ok(),
     };
 
-    let solver = SudokuSolver::new(grid);
-    let sudoku_ui = SudokuUi::new(false, solver);
+    let sudoku_ui = SudokuUi::new(grid);
     eframe::run_native("Sudoku solver", options, Box::new(|_| Box::new(sudoku_ui)))
 }

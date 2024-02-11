@@ -1,4 +1,5 @@
-use crate::sudoku::{Field, SudokuGrid};
+use crate::sudoku::field::Field;
+use crate::sudoku::grid::SudokuGrid;
 
 use super::SolveStep;
 

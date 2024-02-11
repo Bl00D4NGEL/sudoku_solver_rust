@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 
 impl SudokuUi {
     pub fn export_to(&self, target: &PathBuf) {
-        if let Some(grid) = self.solver().grid() {
+        if let Some(grid) = self.grid() {
             let export = grid
                 .rows()
                 .iter()
