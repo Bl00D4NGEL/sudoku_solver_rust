@@ -8,76 +8,104 @@ use eframe::{egui, App};
 use egui::Color32;
 use egui_extras::{Size, Strip, StripBuilder};
 
-impl App for SudokuSolver {
+pub struct SudokuUi {
+    auto_solve: bool,
+    solver: SudokuSolver,
+}
+
+impl SudokuUi {
+    pub fn new(auto_solve: bool, solver: SudokuSolver) -> Self {
+        Self { auto_solve, solver }
+    }
+}
+
+impl App for SudokuUi {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Some(grid) = self.grid() {
-            if !grid.is_completed() {
-                self.solve();
+        if self.auto_solve {
+            if let Some(grid) = self.solver.grid() {
+                if !grid.is_completed() {
+                    self.solver.solve();
+                }
             }
         }
-
         egui::CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
-                .size(Size::relative(0.8))
-                .size(Size::relative(0.2))
-                .horizontal(|mut upper_strip| {
-                    upper_strip.cell(|ui| match self.grid() {
-                        None => (),
-                        Some(grid) => {
-                            let changes = grid.ui(ui);
-                            self.apply_solve_steps(changes);
-                        }
+                .size(Size::relative(0.1))
+                .size(Size::relative(0.9))
+                .vertical(|mut vertical_strip| {
+                    vertical_strip.cell(|ui| {
+                        ui.menu_button("Menu", |menu_ui| {
+                            if menu_ui.button("Export").clicked() {
+                                if let Ok(cwd) = current_dir() {
+                                    let fd = rfd::FileDialog::new();
+                                    if let Some(path) = fd.set_directory(cwd).pick_file() {
+                                        self.solver.export_to(&path);
+                                    }
+                                }
+                            }
+
+                            if menu_ui.button("Import").clicked() {
+                                if let Ok(cwd) = current_dir() {
+                                    let fd = rfd::FileDialog::new();
+                                    if let Some(path) = fd.set_directory(cwd).pick_file() {
+                                        self.solver.solve_steps_mut().clear();
+                                        let result = self.solver.import_from(&path);
+                                        if result.is_err() {
+                                            menu_ui.label("That didn't work");
+                                        }
+                                    }
+                                }
+                            }
+
+                            menu_ui.checkbox(&mut self.auto_solve, "Auto solve");
+                        });
                     });
 
-                    upper_strip.cell(|ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            if ui.button("Export").clicked() {
-                                if let Ok(cwd) = current_dir() {
-                                    let fd = rfd::FileDialog::new();
-                                    if let Some(path) = fd.set_directory(cwd).pick_file() {
-                                        self.export_to(&path);
+                    vertical_strip.cell(|v_ui| {
+                        StripBuilder::new(v_ui)
+                            .size(Size::relative(0.8))
+                            .size(Size::relative(0.2))
+                            .horizontal(|mut horizontal_strip| {
+                                horizontal_strip.cell(|ui| match self.solver.grid() {
+                                    None => (),
+                                    Some(grid) => {
+                                        let changes = grid.ui(ui);
+                                        self.solver.apply_solve_steps(changes);
                                     }
-                                }
-                            }
+                                });
 
-                            if ui.button("Import").clicked() {
-                                if let Ok(cwd) = current_dir() {
-                                    let fd = rfd::FileDialog::new();
-                                    if let Some(path) = fd.set_directory(cwd).pick_file() {
-                                        self.solve_steps_mut().clear();
-                                        let result = self.import_from(&path);
-                                        if result.is_err() {
-                                            ui.label("That didn't work");
+                                horizontal_strip.cell(|h_ui| {
+                                    egui::ScrollArea::vertical().show(h_ui, |scroll_ui| {
+                                        if let Some(grid) = self.solver.grid() {
+                                            if grid.is_completed() {
+                                                scroll_ui.label("You won!");
+                                            }
                                         }
-                                    }
-                                }
-                            }
 
-                            if let Some(grid) = self.grid() {
-                                if grid.is_completed() {
-                                    ui.label("You won!");
-                                }
-                            }
-
-                            for (position, solve_step) in self.solve_steps().iter().rev() {
-                                ui.label(format!(
-                                    "{} / {} => {}",
-                                    position.row(),
-                                    position.column(),
-                                    match &solve_step {
-                                        SolveStep::SetValue(value) => format!("Set {value}"),
-                                        SolveStep::RemovePossibilities(p) => {
-                                            format!("Remove {p:?}")
+                                        for (position, solve_step) in
+                                            self.solver.solve_steps().iter().rev()
+                                        {
+                                            scroll_ui.label(format!(
+                                                "{} / {} => {}",
+                                                position.row(),
+                                                position.column(),
+                                                match &solve_step {
+                                                    SolveStep::SetValue(value) =>
+                                                        format!("Set {value}"),
+                                                    SolveStep::RemovePossibilities(p) => {
+                                                        format!("Remove {p:?}")
+                                                    }
+                                                },
+                                            ));
                                         }
-                                    },
-                                ));
-                            }
-                        });
-                    })
-                });
-
-            ctx.request_repaint();
+                                    });
+                                });
+                            });
+                    });
+                })
         });
+
+        ctx.request_repaint();
     }
 }
 
