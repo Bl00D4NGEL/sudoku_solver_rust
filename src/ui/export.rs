@@ -5,6 +5,7 @@ impl SudokuUi {
     pub fn export_to(&self, target: &PathBuf) {
         if let Some(grid) = self.grid() {
             let export = grid
+                .grid
                 .rows()
                 .iter()
                 .map(|row| {

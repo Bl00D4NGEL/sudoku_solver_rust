@@ -13,8 +13,51 @@ mod import;
 pub struct SudokuUi {
     auto_solve: bool,
     solver: SudokuSolver,
-    grid: Option<SudokuGrid>,
+    grid: Option<SudokuGridWithColoredFields>,
     solve_steps: Vec<(FieldPosition, SolveStep)>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SudokuGridWithColoredFields {
+    grid: SudokuGrid,
+    field_metadata: Vec<FieldWithMetaData>,
+}
+
+impl SudokuGridWithColoredFields {
+    fn new(grid: SudokuGrid) -> Self {
+        Self {
+            grid: grid.clone(),
+            field_metadata: grid
+                .rows()
+                .iter()
+                .flat_map(|row| {
+                    row.iter()
+                        .map(|f| FieldWithMetaData::new(f.position().clone()))
+                        .collect::<Vec<FieldWithMetaData>>()
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldWithMetaData {
+    field_position: FieldPosition,
+    metadata: FieldMetaData,
+}
+
+impl FieldWithMetaData {
+    fn new(field_position: FieldPosition) -> Self {
+        Self {
+            field_position,
+            metadata: FieldMetaData::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FieldMetaData {
+    color: Option<Color32>,
 }
 
 impl SudokuUi {
@@ -22,16 +65,16 @@ impl SudokuUi {
         Self {
             auto_solve: false,
             solver: SudokuSolver::new(),
-            grid,
+            grid: grid.map(SudokuGridWithColoredFields::new),
             solve_steps: vec![],
         }
     }
 
-    pub fn grid(&self) -> Option<&SudokuGrid> {
+    pub fn grid(&self) -> Option<&SudokuGridWithColoredFields> {
         self.grid.as_ref()
     }
 
-    pub fn grid_mut(&mut self) -> &mut Option<SudokuGrid> {
+    pub fn grid_mut(&mut self) -> &mut Option<SudokuGridWithColoredFields> {
         &mut self.grid
     }
 
@@ -47,11 +90,11 @@ impl App for SudokuUi {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.auto_solve {
             if let Some(grid) = self.grid() {
-                if !grid.is_completed() {
-                    let solve_steps = self.solver.determine_solve_steps(grid);
+                if !grid.grid.is_completed() {
+                    let solve_steps = self.solver.determine_solve_steps(&grid.grid);
 
                     if let Some(mut_grid) = self.grid_mut() {
-                        mut_grid.apply_solve_steps(&solve_steps);
+                        mut_grid.grid.apply_solve_steps(&solve_steps);
 
                         self.add_solve_steps(&solve_steps);
                     }
@@ -107,7 +150,7 @@ impl App for SudokuUi {
                                     }
 
                                     if let Some(grid) = self.grid_mut() {
-                                        grid.apply_solve_steps(&changes);
+                                        grid.grid.apply_solve_steps(&changes);
 
                                         self.add_solve_steps(&changes);
                                     }
@@ -116,7 +159,7 @@ impl App for SudokuUi {
                                 horizontal_strip.cell(|h_ui| {
                                     egui::ScrollArea::vertical().show(h_ui, |scroll_ui| {
                                         if let Some(grid) = self.grid() {
-                                            if grid.is_completed() {
+                                            if grid.grid.is_completed() {
                                                 scroll_ui.label("You won!");
                                             }
                                         }
@@ -147,15 +190,19 @@ impl App for SudokuUi {
     }
 }
 
-impl SudokuGrid {
-    fn ui(&self, ui: &mut egui::Ui) -> Vec<(FieldPosition, SolveStep)> {
+impl SudokuGridWithColoredFields {
+    fn ui(&mut self, ui: &mut egui::Ui) -> Vec<(FieldPosition, SolveStep)> {
         let mut changes = vec![];
         draw_grid(ui, 9, 9, |field_strip, position| {
             field_strip.cell(|ui| {
-                if let Some(field) = self.get_field(position) {
-                    let p = field.ui(ui);
-                    if let Some(solve_step) = p {
-                        changes.push((field.position().clone(), solve_step));
+                let index = position.row() * 9 + position.column();
+                if let Some(field_metadata) = self.field_metadata.get_mut(index) {
+                    if let Some(field) = self.grid.get_field(field_metadata.field_position.clone())
+                    {
+                        let p = field_metadata.ui(ui, field);
+                        if let Some(solve_step) = p {
+                            changes.push((field_metadata.field_position.clone(), solve_step));
+                        }
                     }
                 }
             });
@@ -165,8 +212,8 @@ impl SudokuGrid {
     }
 }
 
-impl Field {
-    fn ui(&self, ui: &mut egui::Ui) -> Option<SolveStep> {
+impl FieldWithMetaData {
+    fn ui(&mut self, ui: &mut egui::Ui, field: &Field) -> Option<SolveStep> {
         let dark_mode = ui.visuals().dark_mode;
         let faded_color = ui.visuals().window_fill();
         let faded_color = |color: Color32| -> Color32 {
@@ -176,20 +223,27 @@ impl Field {
         };
 
         let mut solve_step: Option<SolveStep> = None;
+        self.metadata.color = match field.value().unwrap_or(0) {
+            1 => Some(Color32::BLUE),
+            2 => Some(Color32::GREEN),
+            3 => Some(Color32::RED),
+            4 => Some(Color32::DARK_BLUE),
+            5 => Some(Color32::DARK_GREEN),
+            6 => Some(Color32::DARK_RED),
+            7 => Some(Color32::LIGHT_BLUE),
+            8 => Some(Color32::LIGHT_GREEN),
+            9 => Some(Color32::LIGHT_RED),
+            _ => None,
+        };
 
-        match self.value() {
+        let color = faded_color(self.metadata.color.unwrap_or(Color32::WHITE));
+        match field.value() {
             None => {
-                let color = if self.possibilities().len() == 1 {
-                    faded_color(Color32::BLUE)
-                } else {
-                    faded_color(Color32::RED)
-                };
-
-                if self.possibilities().is_empty() {
+                if field.possibilities().is_empty() {
                     panic!(
                         "No field value nor possibilities exist for {} / {}",
-                        self.position().row(),
-                        self.position().column()
+                        field.position().row(),
+                        field.position().column()
                     );
                 }
 
@@ -200,11 +254,24 @@ impl Field {
                     field_strip.cell(|ui| {
                         let possibility = position.row() * 3 + position.column() + 1;
                         ui.centered_and_justified(|ui| {
-                            if self.possibilities().contains(&possibility) {
+                            if field.possibilities().contains(&possibility) {
                                 let response = ui.label(&possibility.to_string());
 
                                 let response = response.interact(egui::Sense::click());
                                 if response.clicked() {
+                                    self.metadata.color = Some(match possibility {
+                                        1 => Color32::BLUE,
+                                        2 => Color32::GREEN,
+                                        3 => Color32::RED,
+                                        4 => Color32::DARK_BLUE,
+                                        5 => Color32::DARK_GREEN,
+                                        6 => Color32::DARK_RED,
+                                        7 => Color32::LIGHT_BLUE,
+                                        8 => Color32::LIGHT_GREEN,
+                                        9 => Color32::LIGHT_RED,
+                                        _ => Color32::BLACK,
+                                    });
+
                                     solve_step = Some(SolveStep::SetValue(possibility));
                                 }
                                 response.context_menu(|ui| {
@@ -220,11 +287,8 @@ impl Field {
                 });
             }
             Some(value) => {
-                ui.painter().rect_filled(
-                    ui.available_rect_before_wrap(),
-                    0.0,
-                    faded_color(Color32::GREEN),
-                );
+                ui.painter()
+                    .rect_filled(ui.available_rect_before_wrap(), 0.0, color);
 
                 ui.centered_and_justified(|ui| {
                     ui.heading(format!("{}", value));
